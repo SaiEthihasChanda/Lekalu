@@ -77,6 +77,8 @@ export const ActivityPage = () => {
   // Sort and filter activities by date range
   const sortedActivities = useMemo(() => {
     return [...activities]
+      // Filter out activities with invalid data before comparing dates
+      .filter(a => a && a.date != null && typeof a.date === 'number')
       .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end)
       .sort((a, b) => (b.date || 0) - (a.date || 0));
   }, [activities, getDateRange]);

@@ -45,7 +45,8 @@ export const useBankAccounts = () => {
       try {
         await initializeAuth();
         const userId = getUserId();
-        const encryptionKey = generateEncryptionKey(userId);
+        // Use group ID for encryption key so all group members can decrypt each other's data
+        const encryptionKey = generateEncryptionKey(userId, group?.id);
         
         if (group) {
           // In group: ONLY show group data
@@ -87,7 +88,8 @@ export const useBankAccounts = () => {
   const addAccount = useCallback(async (data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'bankAccounts'), {
@@ -107,7 +109,8 @@ export const useBankAccounts = () => {
   const updateAccount = useCallback(async (id, data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'bankAccounts', id);
@@ -165,7 +168,8 @@ export const useTrackables = () => {
       try {
         await initializeAuth();
         const userId = getUserId();
-        const encryptionKey = generateEncryptionKey(userId);
+        // Use group ID for encryption key so all group members can decrypt each other's data
+        const encryptionKey = generateEncryptionKey(userId, group?.id);
         
         if (group) {
           // In group: ONLY show group data
@@ -207,7 +211,8 @@ export const useTrackables = () => {
   const addTrackable = useCallback(async (data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackables'), {
@@ -227,7 +232,8 @@ export const useTrackables = () => {
   const updateTrackable = useCallback(async (id, data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'trackables', id);
@@ -286,7 +292,8 @@ export const useActivities = () => {
       try {
         await initializeAuth();
         const userId = getUserId();
-        const encryptionKey = generateEncryptionKey(userId);
+        // Use group ID for encryption key so all group members can decrypt each other's data
+        const encryptionKey = generateEncryptionKey(userId, group?.id);
         
         if (group) {
           // In group: ONLY show group data
@@ -328,7 +335,8 @@ export const useActivities = () => {
   const addActivity = useCallback(async (data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'activities'), {
@@ -348,7 +356,8 @@ export const useActivities = () => {
   const updateActivity = useCallback(async (id, data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'activities', id);
@@ -406,7 +415,8 @@ export const useTrackers = () => {
       try {
         await initializeAuth();
         const userId = getUserId();
-        const encryptionKey = generateEncryptionKey(userId);
+        // Use group ID for encryption key so all group members can decrypt each other's data
+        const encryptionKey = generateEncryptionKey(userId, group?.id);
         
         if (group) {
           // In group: ONLY show group data
@@ -448,7 +458,8 @@ export const useTrackers = () => {
   const addTracker = useCallback(async (data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackers'), {
@@ -468,7 +479,8 @@ export const useTrackers = () => {
   const updateTracker = useCallback(async (id, data) => {
     try {
       const userId = getUserId();
-      const encryptionKey = generateEncryptionKey(userId);
+      // Use group ID for encryption key so all group members can decrypt each other's data
+      const encryptionKey = generateEncryptionKey(userId, group?.id);
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'trackers', id);

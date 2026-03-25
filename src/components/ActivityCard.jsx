@@ -7,6 +7,11 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
   const [isExpanded, setIsExpanded] = useState(false);
   const [creatorEmail, setCreatorEmail] = useState(null);
   
+  // Validate activity data - if critical fields are missing/null, don't render
+  if (!activity || !activity.type || activity.amount == null) {
+    return null;
+  }
+  
   const isIncome = activity.type === 'income';
   const isTransfer = activity.type === 'transfer';
 

@@ -7,14 +7,17 @@ import CryptoJS from 'crypto-js';
  */
 
 /**
- * Generate encryption key from user ID and a password
+ * Generate encryption key from user ID, group ID, and optional password
  * @param {string} userId - User's Firebase UID
- * @param {string} password - Optional password (defaults to userId)
+ * @param {string} groupId - Optional group ID (if in a group, use this for encryption)
+ * @param {string} password - Optional password (defaults to userId or groupId)
  * @returns {string} Encryption key
  */
-export const generateEncryptionKey = (userId, password = '') => {
-  // Use user ID + password to generate a stable key
-  const key = `${userId}:${password || userId}`;
+export const generateEncryptionKey = (userId, groupId = null, password = '') => {
+  // If in a group, use group ID for key generation so all members use same key
+  // This allows group members to decrypt each other's data
+  const keySource = groupId || userId;
+  const key = `${keySource}:${password || keySource}`;
   return CryptoJS.SHA256(key).toString();
 };
 
@@ -86,7 +89,11 @@ export const decryptData = (data, encryptionKey) => {
             // Parse JSON value
             decrypted[fieldName] = JSON.parse(decryptedString);
           } catch (err) {
-            console.warn(`Failed to decrypt field ${fieldName}:`, err);
+            console.error(
+              `Failed to decrypt field '${fieldName}' in document '${data.id}'`,
+              'This usually means the encryption key is incorrect or the data was corrupted.',
+              err
+            );
             decrypted[fieldName] = null;
           }
         }

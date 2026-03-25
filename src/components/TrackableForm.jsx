@@ -146,6 +146,11 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
 };
 
 export const TrackableCard = ({ trackable, account, onEdit, onDelete }) => {
+  // Validate data before rendering to prevent crashes from failed decryption
+  if (!trackable || !trackable.name || !trackable.type) {
+    return null; // Don't render if critical data is missing
+  }
+
   const typeColor = trackable.type === 'income' ? 'text-green-400' : 'text-red-400';
 
   return (
@@ -153,16 +158,16 @@ export const TrackableCard = ({ trackable, account, onEdit, onDelete }) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-white font-medium">{trackable.name}</h3>
-          {account && <p className="text-xs text-gray-400 mt-1">{account.cardName}</p>}
+          {account && account.cardName && <p className="text-xs text-gray-400 mt-1">{account.cardName}</p>}
         </div>
         <span className={`text-sm font-medium ${typeColor}`}>
           {trackable.type.charAt(0).toUpperCase() + trackable.type.slice(1)}
         </span>
       </div>
 
-      {trackable.includeInTracker && (
+      {trackable.includeInTracker && trackable.trackerAmount != null && (
         <div className="mb-3 p-2 bg-primary/50 rounded text-sm text-gray-300">
-          Tracked Amount: ${trackable.trackerAmount?.toFixed(2) || '0.00'}
+          Tracked Amount: ${trackable.trackerAmount.toFixed(2) || '0.00'}
         </div>
       )}
 
