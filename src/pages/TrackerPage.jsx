@@ -8,7 +8,7 @@ export const TrackerPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const { trackables } = useTrackables();
   const { trackers, addTracker, updateTracker } = useTrackers();
-  const { addActivity } = useActivities();
+  const { activities, addActivity, deleteActivity } = useActivities();
   const { accounts } = useBankAccounts();
 
   const month = currentDate.getMonth() + 1;
@@ -38,7 +38,13 @@ export const TrackerPage = () => {
 
     if (existingTracker) {
       if (existingTracker.isDone) {
-        // Mark as incomplete
+        // Mark as incomplete - delete associated activity
+        const associatedActivity = activities.find(
+          a => a.trackableId === trackableId && a.date >= (existingTracker.completedAt - 86400000) // Within 1 day of completion
+        );
+        if (associatedActivity) {
+          await deleteActivity(associatedActivity.id);
+        }
         await updateTracker(existingTracker.id, { isDone: false, completedAt: null });
       } else {
         // Mark as complete and create activity
