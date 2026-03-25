@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TrendingUp, Mail, Lock, AlertCircle } from 'lucide-react';
-import { loginUser } from '../fb/index.js';
+import { TrendingUp, Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+import { loginUser, signInWithGoogle } from '../fb/index.js';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -31,6 +31,25 @@ export const LoginPage = () => {
         : err.code === 'auth/invalid-email'
         ? 'Invalid email address.'
         : err.message || 'Login failed. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setLoading(true);
+
+    try {
+      await signInWithGoogle();
+      navigate('/');
+    } catch (err) {
+      const errorMessage = err.code === 'auth/popup-closed-by-user'
+        ? 'Sign-in cancelled.'
+        : err.code === 'auth/popup-blocked'
+        ? 'Sign-in popup was blocked. Please allow popups.'
+        : err.message || 'Google sign-in failed. Please try again.';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -106,6 +125,23 @@ export const LoginPage = () => {
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
+
+          {/* Divider */}
+          <div className="flex items-center gap-4 my-6">
+            <div className="flex-1 border-t border-gray-600"></div>
+            <span className="text-gray-400 text-sm">or</span>
+            <div className="flex-1 border-t border-gray-600"></div>
+          </div>
+
+          {/* Google Sign In Button */}
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <LogIn size={18} />
+            Sign in with Google
+          </button>
 
           {/* Register Link */}
           <p className="text-center text-gray-400 text-sm mt-6">

@@ -1,14 +1,17 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useOnboarding } from '../contexts/OnboardingContext.jsx';
 import { logoutUser } from '../fb/index.js';
+import { SettingsModal } from './SettingsModal.jsx';
 
 export const Sidebar = ({ isOpen, onClose, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { startTour } = useOnboarding();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const navItems = [
     { path: '/', label: 'Activity', icon: Activity },
@@ -28,6 +31,11 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
 
   const handleNavClick = () => {
     onClose();
+  };
+
+  const handleDataCleared = () => {
+    // Data will be reloaded when page refreshes
+    handleNavClick();
   };
 
   return (
@@ -110,6 +118,17 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
           <button
             onClick={() => {
               handleNavClick();
+              setIsSettingsOpen(true);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-sm md:text-base"
+            title="Open settings"
+          >
+            <Sliders size={20} />
+            <span>Settings</span>
+          </button>
+          <button
+            onClick={() => {
+              handleNavClick();
               handleLogout();
             }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-sm md:text-base"
@@ -119,6 +138,13 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
           </button>
         </div>
       </aside>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onDataCleared={handleDataCleared}
+      />
     </>
   );
 };

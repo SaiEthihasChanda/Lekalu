@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Plus } from 'lucide-react';
+import { startOfDay, startOfMonth, startOfYear, endOfDay, endOfMonth, endOfYear } from 'date-fns';
 import { Modal } from '../components/Modal.jsx';
 import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
@@ -8,6 +9,7 @@ import { formatAmount } from '../utils/analytics.js';
 
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState('daily'); // daily, monthly, todate
   const { accounts, loading: accountsLoading } = useBankAccounts();
   const { trackables, loading: tracksLoading } = useTrackables();
   
@@ -16,17 +18,33 @@ export const ActivityPage = () => {
     date: today.getTime(),
   });
 
-  // Sort activities by date (most recent first)
+  // Get date range based on filter
+  const getDateRange = useMemo(() => {
+    switch (dateFilter) {
+      case 'daily':
+        return { start: startOfDay(today).getTime(), end: endOfDay(today).getTime() };
+      case 'monthly':
+        return { start: startOfMonth(today).getTime(), end: endOfMonth(today).getTime() };
+      case 'todate':
+        return { start: startOfYear(today).getTime(), end: endOfDay(today).getTime() };
+      default:
+        return { start: startOfDay(today).getTime(), end: endOfDay(today).getTime() };
+    }
+  }, [dateFilter]);
+
+  // Sort and filter activities by date range
   const sortedActivities = useMemo(() => {
-    return [...activities].sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [activities]);
+    return [...activities]
+      .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end)
+      .sort((a, b) => (b.date || 0) - (a.date || 0));
+  }, [activities, getDateRange]);
 
   const todayStats = useMemo(() => {
-    const todayActivities = sortedActivities.filter(a => a.type !== 'transfer');
-    const totalIncome = todayActivities
+    const filteredActivities = sortedActivities.filter(a => a.type !== 'transfer');
+    const totalIncome = filteredActivities
       .filter(a => a.type === 'income')
       .reduce((sum, a) => sum + a.amount, 0);
-    const totalExpense = todayActivities
+    const totalExpense = filteredActivities
       .filter(a => a.type === 'expense')
       .reduce((sum, a) => sum + a.amount, 0);
 
@@ -53,8 +71,10 @@ export const ActivityPage = () => {
       {/* Header with Button (Mobile: side by side) */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 mb-6 md:mb-8">
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Today's Activity</h1>
-          <p className="text-sm md:text-base text-gray-400">Track your daily income and expenses</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            {dateFilter === 'daily' ? "Activity" : dateFilter === 'monthly' ? 'Monthly Activity' : 'Year-to-Date Activity'}
+          </h1>
+          <p className="text-sm md:text-base text-gray-400">Track your income and expenses</p>
         </div>
         <button
           id="tour-add-activity"
@@ -63,6 +83,40 @@ export const ActivityPage = () => {
         >
           <Plus size={18} className="md:w-5 md:h-5" />
           Add Activity
+        </button>
+      </div>
+
+      {/* Date Filter Buttons */}
+      <div className="flex gap-2 md:gap-3 mb-6 md:mb-8">
+        <button
+          onClick={() => setDateFilter('daily')}
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
+            dateFilter === 'daily'
+              ? 'bg-accent text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Daily
+        </button>
+        <button
+          onClick={() => setDateFilter('monthly')}
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
+            dateFilter === 'monthly'
+              ? 'bg-accent text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setDateFilter('todate')}
+          className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
+            dateFilter === 'todate'
+              ? 'bg-accent text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Year-to-Date
         </button>
       </div>
 

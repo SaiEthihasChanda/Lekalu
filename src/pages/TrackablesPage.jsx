@@ -3,7 +3,8 @@ import { Plus } from 'lucide-react';
 import { Modal } from '../components/Modal.jsx';
 import { BankAccountForm, BankAccountCard } from '../components/BankAccountForm.jsx';
 import { TrackableForm, TrackableCard } from '../components/TrackableForm.jsx';
-import { useBankAccounts, useTrackables } from '../hooks/index.js';
+import { useBankAccounts, useTrackables, useActivities } from '../hooks/index.js';
+import { calculateAccountBalance, formatAmount } from '../utils/analytics.js';
 
 export const TrackablesPage = () => {
   const [activeTab, setActiveTab] = useState('trackables');
@@ -14,6 +15,7 @@ export const TrackablesPage = () => {
 
   const { accounts, addAccount, updateAccount, deleteAccount } = useBankAccounts();
   const { trackables, addTrackable, updateTrackable, deleteTrackable } = useTrackables();
+  const { activities } = useActivities();
 
   const editingAccount = editingAccountId ? accounts.find(a => a.id === editingAccountId) : undefined;
   const editingTrackable = editingTrackableId ? trackables.find(t => t.id === editingTrackableId) : undefined;
@@ -143,6 +145,7 @@ export const TrackablesPage = () => {
                 <BankAccountCard
                   key={account.id}
                   account={account}
+                  balance={formatAmount(calculateAccountBalance(account.id, account.openingBalance, activities))}
                   onEdit={() => handleEditAccount(account.id)}
                   onDelete={() => deleteAccount(account.id)}
                 />

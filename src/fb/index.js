@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 /**
  * Replace these with your Firebase project credentials
@@ -107,6 +107,44 @@ export const loginUser = async (email, password) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Sign in with Google
+ * @returns {Promise<Object>} User credential
+ */
+export const signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    return userCredential.user;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Delete all user data from Firestore
+ * @returns {Promise<void>}
+ */
+export const deleteAllUserData = async () => {
+  try {
+    const userId = getUserId();
+    const collectionNames = ['bankAccounts', 'trackables', 'activities', 'trackers'];
+
+    // Delete all documents from each collection for this user
+    for (const collectionName of collectionNames) {
+      const q = query(collection(db, collectionName), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      
+      // Delete each document
+      for (const docSnapshot of snapshot.docs) {
+        await deleteDoc(doc(db, collectionName, docSnapshot.id));
+      }
+    }
   } catch (error) {
     throw error;
   }

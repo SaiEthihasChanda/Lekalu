@@ -103,3 +103,26 @@ export const formatDate = (timestamp, formatStr = 'MMM dd, yyyy') => {
 export const generateId = () => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
+
+/**
+ * Calculate current balance for an account
+ * @param {string} accountId - Account ID
+ * @param {number} openingBalance - Opening balance
+ * @param {Array} activities - Array of all activities
+ * @returns {number} Current balance
+ */
+export const calculateAccountBalance = (accountId, openingBalance = 0, activities = []) => {
+  const accountActivities = activities.filter(a => a.accountId === accountId);
+  
+  let balance = openingBalance;
+  accountActivities.forEach(activity => {
+    if (activity.type === 'income') {
+      balance += activity.amount;
+    } else if (activity.type === 'expense') {
+      balance -= activity.amount;
+    }
+    // transfers are not included in balance calculation
+  });
+  
+  return balance;
+};

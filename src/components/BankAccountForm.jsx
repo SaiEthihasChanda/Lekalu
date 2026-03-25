@@ -4,6 +4,7 @@ import { Trash2, Edit2 } from 'lucide-react';
 export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel }) => {
   const [cardName, setCardName] = useState(account?.cardName || '');
   const [accountNumber, setAccountNumber] = useState(account?.accountNumber || '');
+  const [openingBalance, setOpeningBalance] = useState(account?.openingBalance?.toString() || '0');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -13,9 +14,10 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
       return;
     }
 
-    onSubmit({ cardName, accountNumber });
+    onSubmit({ cardName, accountNumber, openingBalance: parseFloat(openingBalance) || 0 });
     setCardName('');
     setAccountNumber('');
+    setOpeningBalance('0');
   };
 
   return (
@@ -42,6 +44,18 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
         />
       </div>
 
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Opening Balance</label>
+        <input
+          type="number"
+          step="0.01"
+          value={openingBalance}
+          onChange={(e) => setOpeningBalance(e.target.value)}
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-accent"
+          placeholder="0.00"
+        />
+      </div>
+
       <div className="flex gap-2">
         <button
           type="submit"
@@ -64,12 +78,15 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
   );
 };
 
-export const BankAccountCard = ({ account, onEdit, onDelete }) => {
+export const BankAccountCard = ({ account, onEdit, onDelete, balance }) => {
   return (
     <div className="bg-secondary border border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors">
       <div>
         <h3 className="text-white font-medium">{account.cardName}</h3>
         <p className="text-sm text-gray-400 mt-1">{account.accountNumber}</p>
+        {balance !== undefined && (
+          <p className="text-sm text-gray-300 mt-2">Balance: <span className={balance >= 0 ? 'text-green-400' : 'text-red-400'}>{balance}</span></p>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <button

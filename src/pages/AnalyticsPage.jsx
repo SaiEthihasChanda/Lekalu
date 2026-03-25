@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useActivities, useTrackables, useBankAccounts } from '../hooks/index.js';
-import { calculateAnalytics, formatAmount } from '../utils/analytics.js';
-import { BarChart3, PieChart, TrendingUp } from 'lucide-react';
+import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
+import { TrendingUp, PieChart, Wallet } from 'lucide-react';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -90,6 +90,96 @@ export const AnalyticsPage = () => {
       };
     });
   }, [analytics.byAccount, accounts]);
+
+  // Bank account balances
+  const accountBalancesData = useMemo(() => {
+    return accounts.map(account => ({
+      name: account.cardName,
+      balance: calculateAccountBalance(account.id, account.openingBalance, activities),
+    })).sort((a, b) => b.balance - a.balance);
+  }, [accounts, activities]);
+
+  // Bank account balance over time
+  const accountBalanceOverTime = useMemo(() => {
+    if (!activities.length || !accounts.length) return [];
+
+    let dateRange = [];
+    const now = new Date();
+
+    if (timeRange === 'today') {
+      dateRange = [now];
+    } else if (timeRange === 'week') {
+      dateRange = eachDayOfInterval({
+        start: startOfWeek(now),
+        end: endOfWeek(now),
+      });
+    } else if (timeRange === 'month') {
+      dateRange = eachDayOfInterval({
+        start: startOfMonth(now),
+        end: endOfMonth(now),
+      });
+    } else if (timeRange === 'year') {
+      dateRange = eachMonthOfInterval({
+        start: startOfYear(now),
+        end: endOfYear(now),
+      });
+    }
+
+    const dataMap = new Map();
+    const accountColors = {};
+    
+    // Assign colors to each account
+    accounts.forEach((account, idx) => {
+      accountColors[account.id] = COLORS[idx % COLORS.length];
+    });
+
+    // Initialize data points
+    dateRange.forEach(date => {
+      const key = timeRange === 'year' ? format(date, 'MMM') : format(date, 'MMM dd');
+      if (!dataMap.has(key)) {
+        const dataPoint = { name: key };
+        // Initialize balances for each account
+        accounts.forEach(account => {
+          dataPoint[account.id] = account.openingBalance;
+        });
+        dataMap.set(key, dataPoint);
+      }
+    });
+
+    // Update balances based on activities
+    const sortedActivities = [...activities].sort((a, b) => a.date - b.date);
+    
+    sortedActivities.forEach(activity => {
+      const actDate = new Date(activity.date);
+      const key = timeRange === 'year' ? format(actDate, 'MMM') : format(actDate, 'MMM dd');
+
+      if (activity.accountId && dataMap.has(key)) {
+        // Update all data points on and after this date
+        let incremented = false;
+        for (const [k, dataPoint] of dataMap) {
+          if (!incremented) {
+            if (k === key) incremented = true;
+            else continue;
+          }
+          
+          if (!dataPoint[activity.accountId]) {
+            dataPoint[activity.accountId] = accounts.find(a => a.id === activity.accountId)?.openingBalance || 0;
+          }
+
+          if (activity.type === 'income') {
+            dataPoint[activity.accountId] += activity.amount;
+          } else if (activity.type === 'expense') {
+            dataPoint[activity.accountId] -= activity.amount;
+          }
+        }
+      }
+    });
+
+    return Array.from(dataMap.values()).map(dataPoint => {
+      // Convert back to original for easier use
+      return dataPoint;
+    });
+  }, [activities, accounts, timeRange]);
 
   // Prepare date analytics data (line chart)
   const dateAnalyticsData = useMemo(() => {
@@ -338,26 +428,35 @@ export const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* Bank Account Analytics Bar Chart */}
+      {/* Bank Account Balance Over Time Line Chart */}
       <div className="bg-secondary border border-gray-700 rounded-lg p-6 mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <BarChart3 size={20} className="text-accent" />
-          <h2 className="text-lg font-semibold text-white">By Bank Account</h2>
+          <TrendingUp size={20} className="text-accent" />
+          <h2 className="text-lg font-semibold text-white">Account Balances Over Time</h2>
         </div>
-        {accountBarData.length === 0 ? (
+        {accountBalanceOverTime.length === 0 || accounts.length === 0 ? (
           <p className="text-gray-400 text-center py-8">No data available</p>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={accountBarData}>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={accountBalanceOverTime}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9CA3AF" />
               <YAxis stroke="#9CA3AF" />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} formatter={(value) => formatAmount(value)} />
               <Legend />
-              <Bar dataKey="income" fill="#10B981" name="Income" />
-              <Bar dataKey="expense" fill="#EF4444" name="Expense" />
-              <Bar dataKey="net" fill="#3B82F6" name="Net" />
-            </BarChart>
+              {accounts.map((account, idx) => (
+                <Line
+                  key={account.id}
+                  type="monotone"
+                  dataKey={account.id}
+                  stroke={COLORS[idx % COLORS.length]}
+                  name={account.cardName}
+                  strokeWidth={2}
+                  dot={{ fill: COLORS[idx % COLORS.length], r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              ))}
+            </LineChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -383,6 +482,32 @@ export const AnalyticsPage = () => {
               <Line type="monotone" dataKey="net" stroke="#3B82F6" name="Net" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
             </LineChart>
           </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Account Balances Chart */}
+      <div className="bg-secondary border border-gray-700 rounded-lg p-6 mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Wallet size={20} className="text-accent" />
+          <h2 className="text-lg font-semibold text-white">Current Bank Balances</h2>
+        </div>
+        {accountBalancesData.length === 0 ? (
+          <p className="text-gray-400 text-center py-8">No bank accounts added</p>
+        ) : (
+          <div className="space-y-3">
+            {accountBalancesData.map((account, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-primary rounded-lg border border-gray-700">
+                <div>
+                  <p className="text-white font-medium">{account.name}</p>
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatAmount(account.balance)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

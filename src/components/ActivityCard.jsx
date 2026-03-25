@@ -14,25 +14,25 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
 
   return (
     <div
-      className={`${bgColor} border border-gray-700 rounded-lg p-3 md:p-4 hover:border-accent transition-all cursor-pointer`}
+      className={`${bgColor} border border-gray-700 rounded-lg p-2 md:p-4 hover:border-accent transition-all cursor-pointer`}
       onClick={() => hasDescription && setIsExpanded(!isExpanded)}
     >
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0 mb-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1.5 md:gap-0 mb-2 md:mb-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm md:text-base text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
-          <p className="text-xs text-gray-400 mt-1 truncate">{account?.cardName || 'Unknown Account'}</p>
+          <h3 className="text-xs md:text-base text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
+          <p className="text-xs text-gray-400 mt-0.5 truncate">{account?.cardName || 'Unknown Account'}</p>
         </div>
-        <div className="flex items-center gap-1 md:gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-0.5 md:gap-2 self-end md:self-auto">
           {hasDescription && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
-              className="p-1.5 md:p-2 hover:bg-gray-700 rounded transition-colors"
+              className="p-1 md:p-2 hover:bg-gray-700 rounded transition-colors"
               title={isExpanded ? 'Hide details' : 'Show details'}
             >
-              <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`text-gray-400 transition-transform md:w-4 md:h-4 ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
           )}
           {onEdit && (
@@ -41,10 +41,10 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
                 e.stopPropagation();
                 onEdit();
               }}
-              className="p-1.5 md:p-2 hover:bg-gray-700 rounded transition-colors"
+              className="p-1 md:p-2 hover:bg-gray-700 rounded transition-colors"
               title="Edit"
             >
-              <Edit2 size={16} className="text-gray-400" />
+              <Edit2 size={14} className="text-gray-400 md:w-4 md:h-4" />
             </button>
           )}
           {onDelete && (
@@ -53,17 +53,17 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
                 e.stopPropagation();
                 onDelete();
               }}
-              className="p-1.5 md:p-2 hover:bg-red-900/50 rounded transition-colors"
+              className="p-1 md:p-2 hover:bg-red-900/50 rounded transition-colors"
               title="Delete"
             >
-              <Trash2 size={16} className="text-red-400" />
+              <Trash2 size={14} className="text-red-400 md:w-4 md:h-4" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-        <span className={`${textColor} text-base md:text-lg font-semibold`}>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
+        <span className={`${textColor} text-sm md:text-lg font-semibold`}>
           {amountPrefix}
           {formatAmount(activity.amount)}
         </span>
@@ -71,8 +71,8 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
       </div>
 
       {isExpanded && hasDescription && (
-        <div className="mt-3 pt-3 border-t border-gray-600">
-          <p className="text-sm text-gray-300">{activity.description}</p>
+        <div className="mt-2 pt-2 md:mt-3 md:pt-3 border-t border-gray-600">
+          <p className="text-xs md:text-sm text-gray-300">{activity.description}</p>
         </div>
       )}
     </div>
