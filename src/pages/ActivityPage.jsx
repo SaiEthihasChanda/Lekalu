@@ -68,11 +68,20 @@ export const ActivityPage = () => {
 
   // Sort and filter activities by date range
   const sortedActivities = useMemo(() => {
-    return [...activities]
+    console.log('Filtering activities:', { total: activities.length, dateRangeStart: getDateRange.start, dateRangeEnd: getDateRange.end });
+    const filtered = [...activities]
       // Filter out activities with invalid data before comparing dates
-      .filter(a => a && a.date != null && typeof a.date === 'number')
+      .filter(a => {
+        const isValid = a && a.date != null && typeof a.date === 'number';
+        if (!isValid) {
+          console.log('Activity filtered out (no valid date):', { id: a?.id, date: a?.date, dateType: typeof a?.date });
+        }
+        return isValid;
+      })
       .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end)
       .sort((a, b) => (b.date || 0) - (a.date || 0));
+    console.log('After filtering:', { remaining: filtered.length, activities: filtered.map(a => ({ id: a.id, date: a.date })) });
+    return filtered;
   }, [activities, getDateRange]);
 
   const todayStats = useMemo(() => {
@@ -203,16 +212,23 @@ export const ActivityPage = () => {
         {sortedActivities.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400">No activities for today</p>
+            <p className="text-xs text-gray-500 mt-2">DEBUG: {activities.length} total, {sortedActivities.length} sorted</p>
           </div>
         ) : (
-          sortedActivities.map(activity => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              trackable={activity.trackableId ? trackablesMap.get(activity.trackableId) : undefined}
-              account={accountsMap.get(activity.accountId)}
-            />
-          ))
+          <>
+            <p className="text-xs text-gray-500 mb-2">Rendering {sortedActivities.length} activities</p>
+            {sortedActivities.map((activity, idx) => {
+              console.log(`ActivityCard ${idx}:`, { id: activity?.id, hasId: !!activity?.id, hasAmount: !!activity?.amount, keys: Object.keys(activity || {}).slice(0, 10) });
+              return (
+                <ActivityCard
+                  key={activity.id}
+                  activity={activity}
+                  trackable={activity.trackableId ? trackablesMap.get(activity.trackableId) : undefined}
+                  account={accountsMap.get(activity.accountId)}
+                />
+              );
+            })}
+          </>
         )}
       </div>
 

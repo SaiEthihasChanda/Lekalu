@@ -377,11 +377,19 @@ export const useActivities = () => {
     let unsubscribeGroup;
 
     const setupListener = async () => {
+      console.log('useActivities: Setting up listener...', { groupId: group?.id, hasGroup: !!group });
       try {
         await initializeAuth();
         const userId = getUserId();
         // Use group ID for encryption key so all group members can decrypt each other's data
         const encryptionKey = generateEncryptionKey(userId, group?.id);
+        
+        console.log('Activities listener setup:', {
+          userId,
+          groupId: group?.id,
+          isInGroup: !!group,
+          encryptionKeyPreview: encryptionKey.substring(0, 16) + '...'
+        });
         
         if (group) {
           // In group: ONLY show group data
@@ -390,17 +398,21 @@ export const useActivities = () => {
             groupQuery,
             (snapshot) => {
               try {
+                console.log('Group activities snapshot received:', snapshot.docs.length, 'docs');
                 const groupData = snapshot.docs
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      console.log('Decrypted activity:', { id: doc.id, userId: docData.userId, hasData: !!decrypted, hasDate: !!decrypted?.date, dateValue: decrypted?.date, keys: Object.keys(decrypted || {}).slice(0, 10) });
+                      return decrypted;
                     } catch (decryptErr) {
-                      console.error(`Failed to decrypt activity ${doc.id}:`, decryptErr);
+                      console.error(`Failed to decrypt activity ${doc.id}:`, decryptErr.message);
                       return null;
                     }
                   })
                   .filter(doc => doc !== null); // Remove failed decryptions
+                console.log('Displaying', groupData.length, 'activities after decryption');
                 setActivities(groupData);
                 setLoading(false);
               } catch (err) {
@@ -424,6 +436,7 @@ export const useActivities = () => {
             personalQuery,
             (snapshot) => {
               try {
+                console.log('Personal activities snapshot received:', snapshot.docs.length, 'docs');
                 const personalData = snapshot.docs
                   .filter(doc => !doc.data().groupId) // Exclude merged group data
                   .map(doc => {
@@ -436,6 +449,7 @@ export const useActivities = () => {
                     }
                   })
                   .filter(doc => doc !== null); // Remove failed decryptions
+                console.log('Displaying', personalData.length, 'personal activities');
                 setActivities(personalData);
                 setLoading(false);
               } catch (err) {
@@ -469,6 +483,14 @@ export const useActivities = () => {
       const userId = getUserId();
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
+      
+      console.log('Adding activity:', {
+        userId,
+        groupId: group?.id,
+        isInGroup: !!group,
+        dataKeys: Object.keys(data)
+      });
+      
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'activities'), {
@@ -478,6 +500,8 @@ export const useActivities = () => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      
+      console.log('Activity added successfully:', { docId: docRef.id, groupId: group?.id });
       return docRef.id;
     } catch (err) {
       console.error('Error adding activity:', err);
