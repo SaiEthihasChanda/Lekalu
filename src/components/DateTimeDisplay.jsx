@@ -18,10 +18,10 @@ export const DateTimeDisplay = () => {
   }, []);
 
   return (
-    <div className="fixed top-4 right-4 md:top-6 md:right-6 z-30 pointer-events-none">
-      <div className="text-right">
+    <div className="fixed top-20 md:top-6 right-4 md:right-6 z-20 pointer-events-none">
+      <div className="text-right bg-primary/80 backdrop-blur-sm rounded-lg px-3 py-2 md:px-4 md:py-3 border border-gray-700/50">
         <p className="text-xs md:text-sm text-gray-400">
-          {format(dateTime, 'EEE, MMM d')}
+          {format(dateTime, 'EEE, MMM d, yyyy')}
         </p>
         <p className="text-sm md:text-base font-semibold text-gray-300">
           {format(dateTime, 'h:mm:ss a')}
