@@ -92,29 +92,29 @@ export const Tour = () => {
 
       {/* Tour Tooltip */}
       <div
-        className={`fixed z-50 bg-secondary border border-accent rounded-lg shadow-2xl max-w-sm p-6 ${getTooltipPosition(
+        className={`fixed z-50 bg-secondary border border-accent rounded-lg shadow-2xl max-w-xs md:max-w-sm p-4 md:p-6 mx-2 ${getTooltipPosition(
           step.position
         )}`}
       >
         {/* Close Button */}
         <button
           onClick={skipTour}
-          className="absolute top-3 right-3 p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+          className="absolute top-2 right-2 md:top-3 md:right-3 p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
           title="Skip tour"
         >
-          <X size={18} />
+          <X size={16} />
         </button>
 
         {/* Step Counter */}
-        <div className="text-xs text-accent font-semibold mb-2">
+        <div className="text-xs md:text-xs text-accent font-semibold mb-2">
           STEP {currentStep + 1} OF {TOUR_STEPS.length}
         </div>
 
         {/* Title */}
-        <h2 className="text-lg font-bold text-white mb-3">{step.title}</h2>
+        <h2 className="text-base md:text-lg font-bold text-white mb-2 md:mb-3">{step.title}</h2>
 
         {/* Description */}
-        <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+        <p className="text-xs md:text-sm text-gray-300 mb-4 md:mb-6 leading-relaxed">
           {step.description}
         </p>
 
@@ -129,7 +129,7 @@ export const Tour = () => {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
           <button
             onClick={skipTour}
             className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
@@ -137,28 +137,28 @@ export const Tour = () => {
             Skip
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             {!isFirstStep && (
               <button
                 onClick={prevStep}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-xs md:text-sm transition-colors"
               >
                 <ChevronLeft size={16} />
-                Back
+                <span className="hidden md:inline">Back</span>
               </button>
             )}
 
             {isLastStep ? (
               <button
                 onClick={endTour}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-sm transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-xs md:text-sm transition-colors"
               >
                 Finish
               </button>
             ) : (
               <button
                 onClick={nextStep}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-sm transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-xs md:text-sm transition-colors"
               >
                 Next
                 <ChevronRight size={16} />
@@ -216,11 +216,11 @@ function getTooltipPosition(position) {
     case 'center':
       return `${baseClasses} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`;
     case 'top':
-      return `${baseClasses} top-20 left-1/2 transform -translate-x-1/2`;
+      return `${baseClasses} top-16 md:top-20 left-1/2 transform -translate-x-1/2`;
     case 'right':
-      return `${baseClasses} top-1/3 right-8`;
+      return `${baseClasses} top-1/3 right-2 md:right-8`;
     case 'left':
-      return `${baseClasses} top-1/3 left-8`;
+      return `${baseClasses} top-1/3 left-2 md:left-8`;
     default:
       return baseClasses;
   }

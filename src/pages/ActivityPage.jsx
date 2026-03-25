@@ -16,8 +16,13 @@ export const ActivityPage = () => {
     date: today.getTime(),
   });
 
+  // Sort activities by date (most recent first)
+  const sortedActivities = useMemo(() => {
+    return [...activities].sort((a, b) => (b.date || 0) - (a.date || 0));
+  }, [activities]);
+
   const todayStats = useMemo(() => {
-    const todayActivities = activities.filter(a => a.type !== 'transfer');
+    const todayActivities = sortedActivities.filter(a => a.type !== 'transfer');
     const totalIncome = todayActivities
       .filter(a => a.type === 'income')
       .reduce((sum, a) => sum + a.amount, 0);
@@ -30,7 +35,7 @@ export const ActivityPage = () => {
       totalExpense,
       netFlow: totalIncome - totalExpense,
     };
-  }, [activities]);
+  }, [sortedActivities]);
 
   const handleAddActivity = async (data) => {
     await addActivity({
@@ -80,12 +85,12 @@ export const ActivityPage = () => {
 
       {/* Activities List */}
       <div className="space-y-3">
-        {activities.length === 0 ? (
+        {sortedActivities.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400">No activities for today</p>
           </div>
         ) : (
-          activities.map(activity => (
+          sortedActivities.map(activity => (
             <ActivityCard
               key={activity.id}
               activity={activity}
