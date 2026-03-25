@@ -570,10 +570,11 @@ export const autoMergeDataToGroup = async (groupId) => {
     };
 
     // Merge banks
-    const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId), where('groupId', '==', null));
+    const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
     const banksSnapshot = await getDocs(banksQuery);
+    const banksToMerge = banksSnapshot.docs.filter(doc => !doc.data().groupId);
     
-    for (const docSnapshot of banksSnapshot.docs) {
+    for (const docSnapshot of banksToMerge) {
       const docData = { ...docSnapshot.data() };
       
       // Decrypt name to check for conflicts
@@ -609,10 +610,11 @@ export const autoMergeDataToGroup = async (groupId) => {
     }
 
     // Merge trackables
-    const trackablesQuery = query(collection(db, 'trackables'), where('userId', '==', userId), where('groupId', '==', null));
+    const trackablesQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
     const trackablesSnapshot = await getDocs(trackablesQuery);
+    const trackablesToMerge = trackablesSnapshot.docs.filter(doc => !doc.data().groupId);
     
-    for (const docSnapshot of trackablesSnapshot.docs) {
+    for (const docSnapshot of trackablesToMerge) {
       const docData = { ...docSnapshot.data() };
       
       // Decrypt name to check for conflicts
@@ -650,10 +652,11 @@ export const autoMergeDataToGroup = async (groupId) => {
     }
 
     // Merge activities
-    const activitiesQuery = query(collection(db, 'activities'), where('userId', '==', userId), where('groupId', '==', null));
+    const activitiesQuery = query(collection(db, 'activities'), where('userId', '==', userId));
     const activitiesSnapshot = await getDocs(activitiesQuery);
+    const activitiesToMerge = activitiesSnapshot.docs.filter(doc => !doc.data().groupId);
     
-    for (const docSnapshot of activitiesSnapshot.docs) {
+    for (const docSnapshot of activitiesToMerge) {
       const docData = { ...docSnapshot.data() };
       
       // For activities, check for exact duplicates (same amount, description, type, date)
@@ -717,10 +720,11 @@ export const autoMergeDataToGroup = async (groupId) => {
     }
 
     // Merge trackers
-    const trackersQuery = query(collection(db, 'trackers'), where('userId', '==', userId), where('groupId', '==', null));
+    const trackersQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
     const trackersSnapshot = await getDocs(trackersQuery);
+    const trackersToMerge = trackersSnapshot.docs.filter(doc => !doc.data().groupId);
     
-    for (const docSnapshot of trackersSnapshot.docs) {
+    for (const docSnapshot of trackersToMerge) {
       const docData = { ...docSnapshot.data() };
       
       ['isDone', 'completedAt'].forEach(field => 

@@ -51,30 +51,69 @@ export const useBankAccounts = () => {
         if (group) {
           // In group: ONLY show group data
           const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', group.id));
-          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
-            const groupData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
-            setAccounts(groupData);
-            setLoading(false);
-          });
+          unsubscribeGroup = onSnapshot(
+            groupQuery,
+            (snapshot) => {
+              try {
+                const groupData = snapshot.docs
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt bank account ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setAccounts(groupData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing group bank accounts:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to group bank accounts:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         } else {
           // Not in group: ONLY show personal data (where groupId is null/undefined)
           const personalQuery = query(
             collection(db, 'bankAccounts'),
             where('userId', '==', userId)
           );
-          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs
-              .filter(doc => !doc.data().groupId) // Exclude merged group data
-              .map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-            setAccounts(personalData);
-            setLoading(false);
-          });
+          unsubscribePersonal = onSnapshot(
+            personalQuery,
+            (snapshot) => {
+              try {
+                const personalData = snapshot.docs
+                  .filter(doc => !doc.data().groupId)
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt personal bank account ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setAccounts(personalData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing personal bank accounts:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to personal bank accounts:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         }
       } catch (err) {
         console.error('Error setting up bank accounts listener:', err);
@@ -179,30 +218,69 @@ export const useTrackables = () => {
         if (group) {
           // In group: ONLY show group data
           const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', group.id));
-          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
-            const groupData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
-            setTrackables(groupData);
-            setLoading(false);
-          });
+          unsubscribeGroup = onSnapshot(
+            groupQuery,
+            (snapshot) => {
+              try {
+                const groupData = snapshot.docs
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt trackable ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setTrackables(groupData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing group trackables:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to group trackables:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         } else {
           // Not in group: ONLY show personal data (where groupId is null/undefined)
           const personalQuery = query(
             collection(db, 'trackables'),
             where('userId', '==', userId)
           );
-          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs
-              .filter(doc => !doc.data().groupId) // Exclude merged group data
-              .map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-            setTrackables(personalData);
-            setLoading(false);
-          });
+          unsubscribePersonal = onSnapshot(
+            personalQuery,
+            (snapshot) => {
+              try {
+                const personalData = snapshot.docs
+                  .filter(doc => !doc.data().groupId)
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt personal trackable ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setTrackables(personalData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing personal trackables:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to personal trackables:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         }
       } catch (err) {
         console.error('Error setting up trackables listener:', err);
@@ -308,30 +386,69 @@ export const useActivities = () => {
         if (group) {
           // In group: ONLY show group data
           const groupQuery = query(collection(db, 'activities'), where('groupId', '==', group.id));
-          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
-            const groupData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
-            setActivities(groupData);
-            setLoading(false);
-          });
+          unsubscribeGroup = onSnapshot(
+            groupQuery,
+            (snapshot) => {
+              try {
+                const groupData = snapshot.docs
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt activity ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null); // Remove failed decryptions
+                setActivities(groupData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing group activities:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to group activities:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         } else {
           // Not in group: ONLY show personal data (where groupId is null/undefined)
           const personalQuery = query(
             collection(db, 'activities'),
             where('userId', '==', userId)
           );
-          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs
-              .filter(doc => !doc.data().groupId) // Exclude merged group data
-              .map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-            setActivities(personalData);
-            setLoading(false);
-          });
+          unsubscribePersonal = onSnapshot(
+            personalQuery,
+            (snapshot) => {
+              try {
+                const personalData = snapshot.docs
+                  .filter(doc => !doc.data().groupId) // Exclude merged group data
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt personal activity ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null); // Remove failed decryptions
+                setActivities(personalData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing personal activities:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to personal activities:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         }
       } catch (err) {
         console.error('Error setting up activities listener:', err);
@@ -436,30 +553,69 @@ export const useTrackers = () => {
         if (group) {
           // In group: ONLY show group data
           const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', group.id));
-          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
-            const groupData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
-            setTrackers(groupData);
-            setLoading(false);
-          });
+          unsubscribeGroup = onSnapshot(
+            groupQuery,
+            (snapshot) => {
+              try {
+                const groupData = snapshot.docs
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt tracker ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setTrackers(groupData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing group trackers:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to group trackers:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         } else {
           // Not in group: ONLY show personal data (where groupId is null/undefined)
           const personalQuery = query(
             collection(db, 'trackers'),
             where('userId', '==', userId)
           );
-          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs
-              .filter(doc => !doc.data().groupId) // Exclude merged group data
-              .map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-            setTrackers(personalData);
-            setLoading(false);
-          });
+          unsubscribePersonal = onSnapshot(
+            personalQuery,
+            (snapshot) => {
+              try {
+                const personalData = snapshot.docs
+                  .filter(doc => !doc.data().groupId)
+                  .map(doc => {
+                    try {
+                      const docData = { id: doc.id, ...doc.data() };
+                      return decryptData(docData, encryptionKey);
+                    } catch (decryptErr) {
+                      console.error(`Failed to decrypt personal tracker ${doc.id}:`, decryptErr);
+                      return null;
+                    }
+                  })
+                  .filter(doc => doc !== null);
+                setTrackers(personalData);
+                setLoading(false);
+              } catch (err) {
+                console.error('Error processing personal trackers:', err);
+                setError(err);
+              }
+            },
+            (err) => {
+              console.error('Error listening to personal trackers:', err);
+              setError(err);
+              setLoading(false);
+            }
+          );
         }
       } catch (err) {
         console.error('Error setting up trackers listener:', err);
