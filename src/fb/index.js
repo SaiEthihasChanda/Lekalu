@@ -161,9 +161,32 @@ export const deleteAllUserData = async () => {
     const userId = getUserId();
     const collectionNames = ['bankAccounts', 'trackables', 'activities', 'trackers'];
 
-    // Delete all documents from each collection for this user
+    // Check if user is in a group and is the owner
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    const groupId = userDoc.exists() ? userDoc.data().groupId : null;
+    
+    let isGroupOwner = false;
+    if (groupId) {
+      // Check if user is the group owner
+      const groupDocRef = doc(db, 'groups', groupId);
+      const groupDoc = await getDoc(groupDocRef);
+      if (groupDoc.exists() && groupDoc.data().owner === userId) {
+        isGroupOwner = true;
+      }
+    }
+
+    // Delete all documents from each collection
     for (const collectionName of collectionNames) {
-      const q = query(collection(db, collectionName), where('userId', '==', userId));
+      let q;
+      
+      // If user is group owner, delete ALL group data; otherwise delete only their data
+      if (isGroupOwner && groupId) {
+        q = query(collection(db, collectionName), where('groupId', '==', groupId));
+      } else {
+        q = query(collection(db, collectionName), where('userId', '==', userId));
+      }
+      
       const snapshot = await getDocs(q);
       
       // Delete each document

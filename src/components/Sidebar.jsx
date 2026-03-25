@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders, User } from 'lucide-react';
+import { BarChart3, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useOnboarding } from '../contexts/OnboardingContext.jsx';
@@ -65,11 +65,11 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-4 md:p-6 pt-16 md:pt-6">
-          <h1 className="text-xl md:text-2xl font-bold text-accent flex items-center gap-2">
-            <TrendingUp size={24} />
-            <span>Lekalu</span>
-          </h1>
-          <p className="text-xs text-gray-400 mt-1">Expense Tracker</p>
+          <div className="flex items-center gap-3 mb-2">
+            <img src="/lekalu-logo.svg" alt="Lekalu" className="w-10 h-10" />
+            <h1 className="text-xl md:text-2xl font-bold text-white">Lekalu</h1>
+          </div>
+          <p className="text-xs text-gray-400">Personal Finance, Simplified</p>
         </div>
 
         <nav className="mt-4 md:mt-8 px-4 flex-1 overflow-y-auto">

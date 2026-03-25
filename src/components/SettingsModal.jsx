@@ -92,7 +92,9 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-white mb-1">Clear All Data</h3>
                 <p className="text-sm text-gray-400">
-                  Delete all your bank accounts, trackables, activities, and trackers. This action cannot be undone.
+                  {isGroupOwner 
+                    ? 'Delete ALL group data (all members\' accounts, trackables, activities, and trackers). This action cannot be undone.' 
+                    : 'Delete all your personal bank accounts, trackables, activities, and trackers. This action cannot be undone.'}
                 </p>
               </div>
             </div>
@@ -121,12 +123,14 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     <Trash2 size={18} />
-                    Clear All Data
+                    {isGroupOwner ? 'Delete All Group Data' : 'Clear All Data'}
                   </button>
                 ) : (
                   <div className="space-y-2">
                     <p className="text-sm text-red-400 font-medium">
-                      Are you sure? This will permanently delete everything.
+                      {isGroupOwner 
+                        ? 'Delete ALL GROUP data from all members? This cannot be undone.' 
+                        : 'Are you sure? This will permanently delete all your data.'}
                     </p>
                     <div className="flex gap-2">
                       <button

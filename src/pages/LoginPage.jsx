@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TrendingUp, Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
+import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { loginUser, signInWithGoogle } from '../fb/index.js';
 
 export const LoginPage = () => {
@@ -61,11 +61,11 @@ export const LoginPage = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <TrendingUp size={32} className="text-accent" />
-            <h1 className="text-3xl font-bold text-white">Lekkalu</h1>
+          <div className="flex items-center justify-center mb-4">
+            <img src="/lekalu-logo.svg" alt="Lekalu" className="w-16 h-16" />
           </div>
-          <p className="text-gray-400">Personal Expense Tracker</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Lekalu</h1>
+          <p className="text-gray-400">Personal Finance, Simplified</p>
         </div>
 
         {/* Login Card */}
