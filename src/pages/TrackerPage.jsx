@@ -52,12 +52,15 @@ export const TrackerPage = () => {
           amount: trackable.trackerAmount || 0,
           type: trackable.type,
           trackableId: trackableId,
-          accountId: trackable.accountId,
           description: trackable.name,
           date: new Date().getTime(),
-          createdAt: new Date().getTime(),
-          updatedAt: new Date().getTime(),
         };
+        
+        // Only include accountId if it has a value
+        if (trackable.accountId) {
+          newActivity.accountId = trackable.accountId;
+        }
+
         await addActivity(newActivity);
         await updateTracker(existingTracker.id, { isDone: true, completedAt: new Date().getTime() });
       }
@@ -69,8 +72,6 @@ export const TrackerPage = () => {
         year: year,
         isDone: true,
         completedAt: new Date().getTime(),
-        createdAt: new Date().getTime(),
-        updatedAt: new Date().getTime(),
       };
       const trackerId = await addTracker(newTracker);
 
@@ -79,12 +80,15 @@ export const TrackerPage = () => {
         amount: trackable.trackerAmount || 0,
         type: trackable.type,
         trackableId: trackableId,
-        accountId: trackable.accountId,
         description: trackable.name,
         date: new Date().getTime(),
-        createdAt: new Date().getTime(),
-        updatedAt: new Date().getTime(),
       };
+      
+      // Only include accountId if it has a value
+      if (trackable.accountId) {
+        newActivity.accountId = trackable.accountId;
+      }
+
       await addActivity(newActivity);
     }
   };
