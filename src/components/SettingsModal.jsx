@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Settings, AlertTriangle, Trash2, X } from 'lucide-react';
-import { deleteAllUserData } from '../fb/index.js';
+import React, { useState, useEffect } from 'react';
+import { Settings, AlertTriangle, Trash2, X, Users, Lock } from 'lucide-react';
+import { deleteAllUserData, getUserGroup, getUserId } from '../fb/index.js';
 import { Modal } from './Modal.jsx';
+import { GroupManagementModal } from './GroupManagementModal.jsx';
 
 /**
  * Settings Modal Component
@@ -13,6 +14,35 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [userGroup, setUserGroup] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [isGroupOwner, setIsGroupOwner] = useState(false);
+
+  // Load group information when modal opens
+  useEffect(() => {
+    const loadGroupInfo = async () => {
+      try {
+        const userId = getUserId();
+        setCurrentUserId(userId);
+        
+        const group = await getUserGroup();
+        setUserGroup(group);
+        
+        if (group && group.owner === userId) {
+          setIsGroupOwner(true);
+        } else {
+          setIsGroupOwner(false);
+        }
+      } catch (err) {
+        console.error('Error loading group info:', err);
+      }
+    };
+
+    if (isOpen) {
+      loadGroupInfo();
+    }
+  }, [isOpen]);
 
   const handleClearData = async () => {
     setError('');
@@ -40,7 +70,8 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <>
+      <Modal isOpen={isOpen} onClose={onClose}>
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -58,6 +89,27 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
 
         {/* Settings Options */}
         <div className="space-y-4">
+          {/* Group Management Section */}
+          <div className="bg-primary border border-accent/30 rounded-lg p-4">
+            <div className="flex items-start gap-3 mb-4">
+              <Users size={20} className="text-accent flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white mb-1">Group Management</h3>
+                <p className="text-sm text-gray-400">
+                  Create or join a group to share expenses with others
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsGroupModalOpen(true)}
+              className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <Users size={18} />
+              Manage Group
+            </button>
+          </div>
+
           {/* Clear Data Section */}
           <div className="bg-primary border border-red-500/30 rounded-lg p-4">
             <div className="flex items-start gap-3 mb-4">
@@ -76,40 +128,64 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               </div>
             )}
 
-            {!showConfirm ? (
-              <button
-                onClick={() => setShowConfirm(true)}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Trash2 size={18} />
-                Clear All Data
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-red-400 font-medium">
-                  Are you sure? This will permanently delete everything.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowConfirm(false)}
-                    disabled={isDeleting}
-                    className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleClearData}
-                    disabled={isDeleting}
-                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-                  >
-                    {isDeleting ? 'Clearing...' : 'Confirm Delete'}
-                  </button>
+            {userGroup && !isGroupOwner ? (
+              <div className="p-3 bg-orange-500/10 border border-orange-500/50 rounded-lg flex items-start gap-3">
+                <Lock size={18} className="text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-orange-400">Group Member Restriction</p>
+                  <p className="text-xs text-orange-300 mt-1">
+                    Only the group owner can clear data. Leave the group first to clear your personal data.
+                  </p>
                 </div>
               </div>
+            ) : (
+              <>
+                {!showConfirm ? (
+                  <button
+                    onClick={() => setShowConfirm(true)}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={18} />
+                    Clear All Data
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-red-400 font-medium">
+                      Are you sure? This will permanently delete everything.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowConfirm(false)}
+                        disabled={isDeleting}
+                        className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleClearData}
+                        disabled={isDeleting}
+                        className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                      >
+                        {isDeleting ? 'Clearing...' : 'Confirm Delete'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
     </Modal>
-  );
+
+    {/* Group Management Modal */}
+    <GroupManagementModal
+      isOpen={isGroupModalOpen}
+      onClose={() => setIsGroupModalOpen(false)}
+      onGroupUpdated={() => {
+        // Optionally refresh or reload after group changes
+      }}
+    />
+  </>
+);
 };

@@ -3,17 +3,101 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 4, 24);
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return request.auth.uid == uid;
+    }
+
+    function getUserGroup(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.groupId;
+    }
+
+    function isGroupMember(userId, groupId) {
+      return groupId != null && groupId == getUserGroup(userId);
+    }
+
+    function isGroupOwner(userId, groupId) {
+      let group = get(/databases/$(database)/documents/groups/$(groupId));
+      return group.exists && group.data.owner == userId;
+    }
+
+    // Users collection - each user manages their own profile
+    match /users/{userId} {
+      allow read: if isSignedIn() && isUser(userId);
+      allow write: if isSignedIn() && isUser(userId);
+      allow create: if isSignedIn() && isUser(userId);
+    }
+
+    // Groups collection
+    match /groups/{groupId} {
+      allow read: if isSignedIn() && 
+        (isGroupOwner(request.auth.uid, groupId) || 
+         request.auth.uid in resource.data.members);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        (isGroupOwner(request.auth.uid, groupId));
+      allow delete: if isSignedIn() && 
+        isGroupOwner(request.auth.uid, groupId);
+    }
+
+    // Bank Accounts - personal or group
+    match /bankAccounts/{accountId} {
+      allow read: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow delete: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+    }
+
+    // Trackables - personal or group
+    match /trackables/{trackableId} {
+      allow read: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow delete: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+    }
+
+    // Activities - personal or group
+    match /activities/{activityId} {
+      allow read: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow delete: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+    }
+
+    // Trackers - personal or group
+    match /trackers/{trackerId} {
+      allow read: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
+      allow delete: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid ||
+         isGroupMember(request.auth.uid, resource.data.groupId));
     }
   }
 }

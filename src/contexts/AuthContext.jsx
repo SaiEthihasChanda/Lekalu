@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '../fb/index.js';
+import { auth, db } from '../fb/index.js';
+import { doc, setDoc } from 'firebase/firestore';
 
 /**
  * @typedef {Object} AuthContextType
@@ -24,11 +25,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Subscribe to auth state changes
     const unsubscribe = auth.onAuthStateChanged(
-      (currentUser) => {
+      async (currentUser) => {
         try {
           setUser(currentUser);
+          
+          // Store user email in Firestore if user is authenticated
+          if (currentUser) {
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            await setDoc(userDocRef, {
+              email: currentUser.email,
+              photoURL: currentUser.photoURL,
+              displayName: currentUser.displayName,
+            }, { merge: true });
+          }
+          
           setError(null);
         } catch (err) {
+          console.error('Error storing user data:', err);
           setError(err);
         } finally {
           setLoading(false);

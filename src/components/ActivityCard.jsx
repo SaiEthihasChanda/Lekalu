@@ -1,11 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatAmount, formatDate } from '../utils/analytics.js';
 import { Trash2, Edit2, ChevronDown } from 'lucide-react';
+import { getUserEmail } from '../fb/index.js';
 
 export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [creatorEmail, setCreatorEmail] = useState(null);
+  
   const isIncome = activity.type === 'income';
   const isTransfer = activity.type === 'transfer';
+
+  useEffect(() => {
+    // Fetch creator email if activity is from a group (has groupId)
+    if (activity.groupId && activity.userId) {
+      getUserEmail(activity.userId)
+        .then(email => setCreatorEmail(email))
+        .catch(err => console.error('Error fetching creator email:', err));
+    }
+  }, [activity.groupId, activity.userId]);
 
   const bgColor = isTransfer ? 'bg-gray-700/50' : isIncome ? 'bg-green-900/20' : 'bg-red-900/20';
   const textColor = isTransfer ? 'text-gray-300' : isIncome ? 'text-green-400' : 'text-red-400';
@@ -21,6 +33,9 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
         <div className="min-w-0 flex-1">
           <h3 className="text-xs md:text-base text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
           <p className="text-xs text-gray-400 mt-0.5 truncate">{account?.cardName || 'Unknown Account'}</p>
+          {creatorEmail && (
+            <p className="text-xs text-gray-500 mt-0.5">Created by: {creatorEmail}</p>
+          )}
         </div>
         <div className="flex items-center gap-0.5 md:gap-2 self-end md:self-auto">
           {hasDescription && (

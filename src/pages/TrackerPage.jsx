@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
 import { useTrackables, useTrackers, useActivities } from '../hooks/index.js';
 import { useBankAccounts } from '../hooks/index.js';
+import { getUserEmail } from '../fb/index.js';
 
 export const TrackerPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [creatorEmails, setCreatorEmails] = useState({});
   const { trackables } = useTrackables();
   const { trackers, addTracker, updateTracker } = useTrackers();
   const { activities, addActivity, deleteActivity } = useActivities();
@@ -29,6 +31,27 @@ export const TrackerPage = () => {
   }, [trackers, month, year]);
 
   const accountsMap = new Map(accounts.map(a => [a.id, a]));
+
+  // Fetch creator emails for group trackers
+  useEffect(() => {
+    const fetchCreatorEmails = async () => {
+      const emails = {};
+      for (const trackable of trackablesForThisMonth) {
+        const tracker = trackersMap.get(trackable.id);
+        if (tracker?.groupId && tracker?.userId) {
+          const email = await getUserEmail(tracker.userId);
+          if (email) {
+            emails[trackable.id] = email;
+          }
+        }
+      }
+      setCreatorEmails(emails);
+    };
+    
+    if (trackablesForThisMonth.length > 0) {
+      fetchCreatorEmails();
+    }
+  }, [trackablesForThisMonth, trackersMap]);
 
   const handleMarkComplete = async (trackableId) => {
     const existingTracker = trackersMap.get(trackableId);
@@ -191,6 +214,9 @@ export const TrackerPage = () => {
                     </p>
                     {account && (
                       <p className="text-sm text-gray-400">{account.cardName}</p>
+                    )}
+                    {creatorEmails[trackable.id] && (
+                      <p className="text-xs text-gray-500">Created by: {creatorEmails[trackable.id]}</p>
                     )}
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, initializeAuth, getUserId } from '../fb/index.js';
+import { db, initializeAuth, getUserId, getUserGroup } from '../fb/index.js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
 
 /**
@@ -26,6 +26,7 @@ import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryp
 
 /**
  * Hook for managing bank accounts in Firestore with end-to-end encryption
+ * Supports both personal and group accounts
  * @returns {Object} Bank accounts state and methods
  */
 export const useBankAccounts = () => {
@@ -35,25 +36,40 @@ export const useBankAccounts = () => {
 
   // Initialize auth and set up real-time listener
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribePersonal;
+    let unsubscribeGroup;
 
     const setupListener = async () => {
       try {
         await initializeAuth();
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
-        const q = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
-
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => {
-            const docData = {
-              id: doc.id,
-              ...doc.data(),
-            };
-            // Decrypt sensitive fields
+        
+        // Get user's group
+        const userGroup = await getUserGroup();
+        
+        // Personal accounts query
+        const personalQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
+        
+        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+          const personalData = snapshot.docs.map(doc => {
+            const docData = { id: doc.id, ...doc.data() };
             return decryptData(docData, encryptionKey);
           });
-          setAccounts(data);
+          
+          // If in group, also subscribe to group data
+          if (userGroup) {
+            const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', userGroup.id));
+            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
+              const groupData = groupSnapshot.docs.map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
+              setAccounts([...personalData, ...groupData]);
+            });
+          } else {
+            setAccounts(personalData);
+          }
           setLoading(false);
         });
       } catch (err) {
@@ -64,19 +80,23 @@ export const useBankAccounts = () => {
     };
 
     setupListener();
-    return () => unsubscribe?.();
+    return () => {
+      unsubscribePersonal?.();
+      unsubscribeGroup?.();
+    };
   }, []);
 
   const addAccount = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
+      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'bankAccounts'), {
         ...encryptedData,
         userId,
+        groupId: userGroup?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -91,7 +111,6 @@ export const useBankAccounts = () => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'bankAccounts', id);
@@ -132,6 +151,7 @@ export const useBankAccounts = () => {
 
 /**
  * Hook for managing trackables in Firestore with end-to-end encryption
+ * Supports both personal and group trackables
  * @returns {Object} Trackables state and methods
  */
 export const useTrackables = () => {
@@ -140,25 +160,40 @@ export const useTrackables = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribePersonal;
+    let unsubscribeGroup;
 
     const setupListener = async () => {
       try {
         await initializeAuth();
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
-        const q = query(collection(db, 'trackables'), where('userId', '==', userId));
-
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => {
-            const docData = {
-              id: doc.id,
-              ...doc.data(),
-            };
-            // Decrypt sensitive fields
+        
+        // Get user's group
+        const userGroup = await getUserGroup();
+        
+        // Personal trackables query
+        const personalQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
+        
+        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+          const personalData = snapshot.docs.map(doc => {
+            const docData = { id: doc.id, ...doc.data() };
             return decryptData(docData, encryptionKey);
           });
-          setTrackables(data);
+          
+          // If in group, also subscribe to group data
+          if (userGroup) {
+            const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', userGroup.id));
+            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
+              const groupData = groupSnapshot.docs.map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
+              setTrackables([...personalData, ...groupData]);
+            });
+          } else {
+            setTrackables(personalData);
+          }
           setLoading(false);
         });
       } catch (err) {
@@ -169,19 +204,23 @@ export const useTrackables = () => {
     };
 
     setupListener();
-    return () => unsubscribe?.();
+    return () => {
+      unsubscribePersonal?.();
+      unsubscribeGroup?.();
+    };
   }, []);
 
   const addTrackable = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
+      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackables'), {
         ...encryptedData,
         userId,
+        groupId: userGroup?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -196,7 +235,6 @@ export const useTrackables = () => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'trackables', id);
@@ -238,6 +276,7 @@ export const useTrackables = () => {
 
 /**
  * Hook for managing activities in Firestore with end-to-end encryption
+ * Supports both personal and group activities
  * @returns {Object} Activities state and methods
  */
 export const useActivities = () => {
@@ -246,25 +285,40 @@ export const useActivities = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribePersonal;
+    let unsubscribeGroup;
 
     const setupListener = async () => {
       try {
         await initializeAuth();
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
-        const q = query(collection(db, 'activities'), where('userId', '==', userId));
-
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => {
-            const docData = {
-              id: doc.id,
-              ...doc.data(),
-            };
-            // Decrypt sensitive fields
+        
+        // Get user's group
+        const userGroup = await getUserGroup();
+        
+        // Personal activities query
+        const personalQuery = query(collection(db, 'activities'), where('userId', '==', userId));
+        
+        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+          const personalData = snapshot.docs.map(doc => {
+            const docData = { id: doc.id, ...doc.data() };
             return decryptData(docData, encryptionKey);
           });
-          setActivities(data);
+          
+          // If in group, also subscribe to group data
+          if (userGroup) {
+            const groupQuery = query(collection(db, 'activities'), where('groupId', '==', userGroup.id));
+            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
+              const groupData = groupSnapshot.docs.map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
+              setActivities([...personalData, ...groupData]);
+            });
+          } else {
+            setActivities(personalData);
+          }
           setLoading(false);
         });
       } catch (err) {
@@ -275,19 +329,23 @@ export const useActivities = () => {
     };
 
     setupListener();
-    return () => unsubscribe?.();
+    return () => {
+      unsubscribePersonal?.();
+      unsubscribeGroup?.();
+    };
   }, []);
 
   const addActivity = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
+      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'activities'), {
         ...encryptedData,
         userId,
+        groupId: userGroup?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -302,7 +360,6 @@ export const useActivities = () => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'activities', id);
@@ -343,6 +400,7 @@ export const useActivities = () => {
 
 /**
  * Hook for managing trackers in Firestore with end-to-end encryption
+ * Supports both personal and group trackers
  * @returns {Object} Trackers state and methods
  */
 export const useTrackers = () => {
@@ -351,25 +409,40 @@ export const useTrackers = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribePersonal;
+    let unsubscribeGroup;
 
     const setupListener = async () => {
       try {
         await initializeAuth();
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
-        const q = query(collection(db, 'trackers'), where('userId', '==', userId));
-
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          const data = snapshot.docs.map(doc => {
-            const docData = {
-              id: doc.id,
-              ...doc.data(),
-            };
-            // Decrypt sensitive fields
+        
+        // Get user's group
+        const userGroup = await getUserGroup();
+        
+        // Personal trackers query
+        const personalQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
+        
+        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+          const personalData = snapshot.docs.map(doc => {
+            const docData = { id: doc.id, ...doc.data() };
             return decryptData(docData, encryptionKey);
           });
-          setTrackers(data);
+          
+          // If in group, also subscribe to group data
+          if (userGroup) {
+            const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', userGroup.id));
+            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
+              const groupData = groupSnapshot.docs.map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
+              setTrackers([...personalData, ...groupData]);
+            });
+          } else {
+            setTrackers(personalData);
+          }
           setLoading(false);
         });
       } catch (err) {
@@ -380,19 +453,23 @@ export const useTrackers = () => {
     };
 
     setupListener();
-    return () => unsubscribe?.();
+    return () => {
+      unsubscribePersonal?.();
+      unsubscribeGroup?.();
+    };
   }, []);
 
   const addTracker = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
+      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackers'), {
         ...encryptedData,
         userId,
+        groupId: userGroup?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -407,7 +484,6 @@ export const useTrackers = () => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      // Encrypt sensitive fields before sending to Firebase
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = doc(db, 'trackers', id);
