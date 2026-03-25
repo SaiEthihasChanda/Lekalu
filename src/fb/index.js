@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
 import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 /**
@@ -391,5 +391,66 @@ export const getUserEmail = async (userId) => {
   } catch (error) {
     console.error('Error getting user email:', error);
     return null;
+  }
+};
+
+/**
+ * Migrate all personal data (activities, trackables, trackers, banks) to a group
+ * @param {string} groupId - Target group ID
+ * @returns {Promise<Object>} Migration result with counts
+ */
+export const migrateDataToGroup = async (groupId) => {
+  try {
+    const userId = getUserId();
+    const batch = writeBatch(db);
+    let counts = {
+      activities: 0,
+      trackables: 0,
+      trackers: 0,
+      banks: 0,
+    };
+
+    // Migrate activities
+    const activitiesQuery = query(collection(db, 'activities'), where('userId', '==', userId));
+    const activitiesSnapshot = await getDocs(activitiesQuery);
+    activitiesSnapshot.forEach((docSnapshot) => {
+      const docRef = doc(db, 'activities', docSnapshot.id);
+      batch.update(docRef, { groupId: groupId });
+      counts.activities++;
+    });
+
+    // Migrate trackables
+    const trackablesQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
+    const trackablesSnapshot = await getDocs(trackablesQuery);
+    trackablesSnapshot.forEach((docSnapshot) => {
+      const docRef = doc(db, 'trackables', docSnapshot.id);
+      batch.update(docRef, { groupId: groupId });
+      counts.trackables++;
+    });
+
+    // Migrate trackers
+    const trackersQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
+    const trackersSnapshot = await getDocs(trackersQuery);
+    trackersSnapshot.forEach((docSnapshot) => {
+      const docRef = doc(db, 'trackers', docSnapshot.id);
+      batch.update(docRef, { groupId: groupId });
+      counts.trackers++;
+    });
+
+    // Migrate banks
+    const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
+    const banksSnapshot = await getDocs(banksQuery);
+    banksSnapshot.forEach((docSnapshot) => {
+      const docRef = doc(db, 'bankAccounts', docSnapshot.id);
+      batch.update(docRef, { groupId: groupId });
+      counts.banks++;
+    });
+
+    // Commit batch
+    await batch.commit();
+    return counts;
+  } catch (error) {
+    console.error('Error migrating data to group:', error);
+    throw error;
   }
 };

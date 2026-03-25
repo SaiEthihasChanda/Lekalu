@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, LogOut, Trash2, Copy, X, AlertTriangle } from 'lucide-react';
+import { Users, Plus, LogOut, Trash2, Copy, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail, initializeAuth } from '../fb/index.js';
+import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail, initializeAuth, migrateDataToGroup } from '../fb/index.js';
 
 /**
  * Group Management Modal
@@ -21,6 +21,9 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
   const [groupCode, setGroupCode] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const [migrationCounts, setMigrationCounts] = useState(null);
+  const [isMigrating, setIsMigrating] = useState(false);
 
   // Load user's group and current user ID on mount
   useEffect(() => {
@@ -79,12 +82,31 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
       setGroup(newGroup);
       setGroupName('');
       setShowCreateGroup(false);
-      if (onGroupUpdated) onGroupUpdated();
+      // Show migration dialog after successful group creation
+      setShowMigrationDialog(true);
     } catch (err) {
       setError(err.message || 'Failed to create group');
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleMigrateData = async () => {
+    setIsMigrating(true);
+    try {
+      const counts = await migrateDataToGroup(group.id);
+      setMigrationCounts(counts);
+      if (onGroupUpdated) onGroupUpdated();
+    } catch (err) {
+      setError(err.message || 'Failed to migrate data');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
+  const handleSkipMigration = () => {
+    setShowMigrationDialog(false);
+    setLoading(false);
+    if (onGroupUpdated) onGroupUpdated();
   };
 
   const handleJoinGroup = async () => {
@@ -303,8 +325,71 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
               </>
             ) : null}
 
+            {/* Migration Dialog */}
+            {showMigrationDialog && !migrationCounts && (
+              <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4 space-y-4">
+                <div>
+                  <h4 className="font-semibold text-blue-400 mb-2">Migrate Your Data</h4>
+                  <p className="text-sm text-blue-300 mb-2">
+                    Would you like to migrate your existing data (activities, trackables, bank accounts, and tracked items) to this new group? All group members will have access to this data.
+                  </p>
+                  <p className="text-xs text-blue-300/70">
+                    You can always migrate data later from the group settings.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSkipMigration}
+                    disabled={isMigrating}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={handleMigrateData}
+                    disabled={isMigrating}
+                    className="flex-1 bg-accent hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    {isMigrating ? 'Migrating...' : 'Migrate Data'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Migration Success */}
+            {showMigrationDialog && migrationCounts && (
+              <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-4 space-y-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle size={20} className="text-green-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-green-400 mb-2">Data Migrated Successfully</h4>
+                    <div className="text-sm text-green-300 space-y-1">
+                      {migrationCounts.activities > 0 && <p>• {migrationCounts.activities} activities</p>}
+                      {migrationCounts.trackables > 0 && <p>• {migrationCounts.trackables} trackables</p>}
+                      {migrationCounts.trackers > 0 && <p>• {migrationCounts.trackers} tracked items</p>}
+                      {migrationCounts.banks > 0 && <p>• {migrationCounts.banks} bank accounts</p>}
+                      {Object.values(migrationCounts).every(count => count === 0) && (
+                        <p>• No data to migrate</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMigrationDialog(false);
+                    setMigrationCounts(null);
+                    setLoading(false);
+                    if (onGroupUpdated) onGroupUpdated();
+                  }}
+                  className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
             {/* Create Group Form */}
-            {showCreateGroup && (
+            {showCreateGroup && !showMigrationDialog && (
               <div className="space-y-3">
                 <input
                   type="text"

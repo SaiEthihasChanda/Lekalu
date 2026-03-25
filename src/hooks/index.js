@@ -11,8 +11,9 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, initializeAuth, getUserId, getUserGroup } from '../fb/index.js';
+import { db, initializeAuth, getUserId } from '../fb/index.js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
  * @typedef {Object} BankAccount
@@ -33,6 +34,7 @@ export const useBankAccounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { group } = useAuth();
 
   // Initialize auth and set up real-time listener
   useEffect(() => {
@@ -45,12 +47,9 @@ export const useBankAccounts = () => {
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
         
-        // Get user's group
-        const userGroup = await getUserGroup();
-        
-        if (userGroup) {
+        if (group) {
           // In group: ONLY show group data
-          const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', userGroup.id));
+          const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', group.id));
           unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
             const groupData = snapshot.docs.map(doc => {
               const docData = { id: doc.id, ...doc.data() };
@@ -83,19 +82,18 @@ export const useBankAccounts = () => {
       unsubscribePersonal?.();
       unsubscribeGroup?.();
     };
-  }, []);
+  }, [group]);
 
   const addAccount = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'bankAccounts'), {
         ...encryptedData,
         userId,
-        groupId: userGroup?.id || null,
+        groupId: group?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -104,7 +102,7 @@ export const useBankAccounts = () => {
       console.error('Error adding account:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const updateAccount = useCallback(async (id, data) => {
     try {
@@ -157,6 +155,7 @@ export const useTrackables = () => {
   const [trackables, setTrackables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { group } = useAuth();
 
   useEffect(() => {
     let unsubscribePersonal;
@@ -168,12 +167,9 @@ export const useTrackables = () => {
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
         
-        // Get user's group
-        const userGroup = await getUserGroup();
-        
-        if (userGroup) {
+        if (group) {
           // In group: ONLY show group data
-          const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', userGroup.id));
+          const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', group.id));
           unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
             const groupData = snapshot.docs.map(doc => {
               const docData = { id: doc.id, ...doc.data() };
@@ -206,19 +202,18 @@ export const useTrackables = () => {
       unsubscribePersonal?.();
       unsubscribeGroup?.();
     };
-  }, []);
+  }, [group]);
 
   const addTrackable = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackables'), {
         ...encryptedData,
         userId,
-        groupId: userGroup?.id || null,
+        groupId: group?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -227,7 +222,7 @@ export const useTrackables = () => {
       console.error('Error adding trackable:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const updateTrackable = useCallback(async (id, data) => {
     try {
@@ -281,6 +276,7 @@ export const useActivities = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { group } = useAuth();
 
   useEffect(() => {
     let unsubscribePersonal;
@@ -292,12 +288,9 @@ export const useActivities = () => {
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
         
-        // Get user's group
-        const userGroup = await getUserGroup();
-        
-        if (userGroup) {
+        if (group) {
           // In group: ONLY show group data
-          const groupQuery = query(collection(db, 'activities'), where('groupId', '==', userGroup.id));
+          const groupQuery = query(collection(db, 'activities'), where('groupId', '==', group.id));
           unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
             const groupData = snapshot.docs.map(doc => {
               const docData = { id: doc.id, ...doc.data() };
@@ -330,19 +323,18 @@ export const useActivities = () => {
       unsubscribePersonal?.();
       unsubscribeGroup?.();
     };
-  }, []);
+  }, [group]);
 
   const addActivity = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'activities'), {
         ...encryptedData,
         userId,
-        groupId: userGroup?.id || null,
+        groupId: group?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -351,7 +343,7 @@ export const useActivities = () => {
       console.error('Error adding activity:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const updateActivity = useCallback(async (id, data) => {
     try {
@@ -404,6 +396,7 @@ export const useTrackers = () => {
   const [trackers, setTrackers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { group } = useAuth();
 
   useEffect(() => {
     let unsubscribePersonal;
@@ -415,12 +408,9 @@ export const useTrackers = () => {
         const userId = getUserId();
         const encryptionKey = generateEncryptionKey(userId);
         
-        // Get user's group
-        const userGroup = await getUserGroup();
-        
-        if (userGroup) {
+        if (group) {
           // In group: ONLY show group data
-          const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', userGroup.id));
+          const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', group.id));
           unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
             const groupData = snapshot.docs.map(doc => {
               const docData = { id: doc.id, ...doc.data() };
@@ -453,19 +443,18 @@ export const useTrackers = () => {
       unsubscribePersonal?.();
       unsubscribeGroup?.();
     };
-  }, []);
+  }, [group]);
 
   const addTracker = useCallback(async (data) => {
     try {
       const userId = getUserId();
       const encryptionKey = generateEncryptionKey(userId);
-      const userGroup = await getUserGroup();
       const encryptedData = encryptData(data, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackers'), {
         ...encryptedData,
         userId,
-        groupId: userGroup?.id || null,
+        groupId: group?.id || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -474,7 +463,7 @@ export const useTrackers = () => {
       console.error('Error adding tracker:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const updateTracker = useCallback(async (id, data) => {
     try {
