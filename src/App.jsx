@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { Tour } from './components/Tour.jsx';
+import { DateTimeDisplay } from './components/DateTimeDisplay.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
@@ -58,6 +59,7 @@ function AppContent() {
     return (
       <>
         <Tour />
+        <DateTimeDisplay />
         <div className="flex flex-col md:flex-row h-screen bg-primary">
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onToggle={() => setSidebarOpen(!sidebarOpen)} />
           <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
