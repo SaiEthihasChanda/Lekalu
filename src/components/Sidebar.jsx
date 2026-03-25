@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders } from 'lucide-react';
+import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useOnboarding } from '../contexts/OnboardingContext.jsx';
@@ -100,9 +100,24 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
 
         {/* User Info & Logout */}
         <div className="p-4 border-t border-gray-700 space-y-2">
-          <div className="mb-4 px-2 min-w-0">
-            <p className="text-xs text-gray-400">Logged in as</p>
-            <p className="text-sm text-white truncate font-medium">{user?.email}</p>
+          <div className="mb-4 px-2 min-w-0 flex items-center gap-3">
+            <div className="flex-shrink-0">
+              {user?.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full border-2 border-accent object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full border-2 border-gray-600 bg-primary flex items-center justify-center">
+                  <User size={20} className="text-gray-400" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-gray-400">Logged in as</p>
+              <p className="text-sm text-white truncate font-medium">{user?.email}</p>
+            </div>
           </div>
           <button
             onClick={() => {
