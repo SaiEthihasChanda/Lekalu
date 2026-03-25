@@ -509,3 +509,354 @@ export const migrateDataToGroup = async (groupId) => {
     throw error;
   }
 };
+
+/**
+ * Auto-merge personal data into group with conflict resolution
+ * When user creates or joins a group, all personal data is merged into group
+ * If conflicts exist (same name), incoming data is appended with "-<email>"
+ * @param {string} groupId - Group ID to merge data into
+ * @returns {Promise<Object>} Counts of merged items per collection
+ */
+export const autoMergeDataToGroup = async (groupId) => {
+  try {
+    const userId = getUserId();
+    const userEmail = auth.currentUser?.email || userId;
+    const batch = writeBatch(db);
+    
+    // Generate encryption keys
+    const personalKey = generateEncryptionKey(userId, null);
+    const groupKey = generateEncryptionKey(userId, groupId);
+    
+    let counts = {
+      activities: 0,
+      trackables: 0,
+      trackers: 0,
+      banks: 0,
+    };
+
+    // Helper to re-encrypt fields
+    const reencryptField = (data, fieldName, fromKey, toKey) => {
+      if (!data[`_encrypted_${fieldName}`] || !data[fieldName]) return;
+      try {
+        const decryptedBytes = CryptoJS.AES.decrypt(data[fieldName], fromKey);
+        const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        const decryptedValue = JSON.parse(decryptedString);
+        const jsonString = JSON.stringify(decryptedValue);
+        data[fieldName] = CryptoJS.AES.encrypt(jsonString, toKey).toString();
+      } catch (err) {
+        console.error(`Failed to re-encrypt field ${fieldName}:`, err);
+      }
+    };
+
+    // Helper to check if name exists in group (for banks and trackables)
+    const nameExistsInGroup = async (collectionName, name) => {
+      const q = query(collection(db, collectionName), where('groupId', '==', groupId));
+      const snapshot = await getDocs(q);
+      
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
+        if (data._encrypted_name && data.name) {
+          try {
+            const decryptedBytes = CryptoJS.AES.decrypt(data.name, groupKey);
+            const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+            const decryptedName = JSON.parse(decryptedString);
+            if (decryptedName === name) return true;
+          } catch (err) {
+            // Continue checking other documents
+          }
+        }
+      }
+      return false;
+    };
+
+    // Merge banks
+    const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId), where('groupId', '==', null));
+    const banksSnapshot = await getDocs(banksQuery);
+    
+    for (const docSnapshot of banksSnapshot.docs) {
+      const docData = { ...docSnapshot.data() };
+      
+      // Decrypt name to check for conflicts
+      let cardName = docData.cardName;
+      if (docData._encrypted_cardName) {
+        try {
+          const nameBytes = CryptoJS.AES.decrypt(docData.cardName, personalKey);
+          const nameStr = nameBytes.toString(CryptoJS.enc.Utf8);
+          cardName = JSON.parse(nameStr);
+        } catch (err) {
+          console.error('Failed to decrypt cardName:', err);
+        }
+      }
+      
+      // Check for conflicts and add email suffix if needed
+      if (await nameExistsInGroup('bankAccounts', cardName)) {
+        cardName = `${cardName}-${userEmail}`;
+        const jsonString = JSON.stringify(cardName);
+        docData.cardName = CryptoJS.AES.encrypt(jsonString, groupKey).toString();
+      } else {
+        reencryptField(docData, 'cardName', personalKey, groupKey);
+      }
+      
+      reencryptField(docData, 'accountNumber', personalKey, groupKey);
+      
+      const docRef = doc(db, 'bankAccounts', docSnapshot.id);
+      batch.update(docRef, {
+        ...docData,
+        groupId,
+        groupMemberId: userId,
+      });
+      counts.banks++;
+    }
+
+    // Merge trackables
+    const trackablesQuery = query(collection(db, 'trackables'), where('userId', '==', userId), where('groupId', '==', null));
+    const trackablesSnapshot = await getDocs(trackablesQuery);
+    
+    for (const docSnapshot of trackablesSnapshot.docs) {
+      const docData = { ...docSnapshot.data() };
+      
+      // Decrypt name to check for conflicts
+      let name = docData.name;
+      if (docData._encrypted_name) {
+        try {
+          const nameBytes = CryptoJS.AES.decrypt(docData.name, personalKey);
+          const nameStr = nameBytes.toString(CryptoJS.enc.Utf8);
+          name = JSON.parse(nameStr);
+        } catch (err) {
+          console.error('Failed to decrypt name:', err);
+        }
+      }
+      
+      // Check for conflicts and add email suffix if needed
+      if (await nameExistsInGroup('trackables', name)) {
+        name = `${name}-${userEmail}`;
+        const jsonString = JSON.stringify(name);
+        docData.name = CryptoJS.AES.encrypt(jsonString, groupKey).toString();
+      } else {
+        reencryptField(docData, 'name', personalKey, groupKey);
+      }
+      
+      ['type', 'amount', 'trackerAmount', 'includeInTracker'].forEach(field => 
+        reencryptField(docData, field, personalKey, groupKey)
+      );
+      
+      const docRef = doc(db, 'trackables', docSnapshot.id);
+      batch.update(docRef, {
+        ...docData,
+        groupId,
+        groupMemberId: userId,
+      });
+      counts.trackables++;
+    }
+
+    // Merge activities
+    const activitiesQuery = query(collection(db, 'activities'), where('userId', '==', userId), where('groupId', '==', null));
+    const activitiesSnapshot = await getDocs(activitiesQuery);
+    
+    for (const docSnapshot of activitiesSnapshot.docs) {
+      const docData = { ...docSnapshot.data() };
+      
+      // For activities, check for exact duplicates (same amount, description, type, date)
+      // If description matches, append email to make it unique
+      let description = docData.description;
+      if (docData._encrypted_description) {
+        try {
+          const descBytes = CryptoJS.AES.decrypt(docData.description, personalKey);
+          const descStr = descBytes.toString(CryptoJS.enc.Utf8);
+          description = JSON.parse(descStr);
+        } catch (err) {
+          console.error('Failed to decrypt description:', err);
+        }
+      }
+      
+      const q = query(
+        collection(db, 'activities'),
+        where('groupId', '==', groupId),
+        where('date', '==', docData.date)
+      );
+      const existing = await getDocs(q);
+      
+      let hasConflict = false;
+      for (const existingDoc of existing.docs) {
+        const existingData = existingDoc.data();
+        let existingDesc = '';
+        if (existingData._encrypted_description) {
+          try {
+            const existingDescBytes = CryptoJS.AES.decrypt(existingData.description, groupKey);
+            const existingDescStr = existingDescBytes.toString(CryptoJS.enc.Utf8);
+            existingDesc = JSON.parse(existingDescStr);
+          } catch (err) {
+            // Continue
+          }
+        }
+        if (existingDesc === description) {
+          hasConflict = true;
+          break;
+        }
+      }
+      
+      if (hasConflict && description) {
+        description = `${description}-${userEmail}`;
+        const jsonString = JSON.stringify(description);
+        docData.description = CryptoJS.AES.encrypt(jsonString, groupKey).toString();
+      } else {
+        reencryptField(docData, 'description', personalKey, groupKey);
+      }
+      
+      ['amount', 'type'].forEach(field => 
+        reencryptField(docData, field, personalKey, groupKey)
+      );
+      
+      const docRef = doc(db, 'activities', docSnapshot.id);
+      batch.update(docRef, {
+        ...docData,
+        groupId,
+        groupMemberId: userId,
+      });
+      counts.activities++;
+    }
+
+    // Merge trackers
+    const trackersQuery = query(collection(db, 'trackers'), where('userId', '==', userId), where('groupId', '==', null));
+    const trackersSnapshot = await getDocs(trackersQuery);
+    
+    for (const docSnapshot of trackersSnapshot.docs) {
+      const docData = { ...docSnapshot.data() };
+      
+      ['isDone', 'completedAt'].forEach(field => 
+        reencryptField(docData, field, personalKey, groupKey)
+      );
+      
+      const docRef = doc(db, 'trackers', docSnapshot.id);
+      batch.update(docRef, {
+        ...docData,
+        groupId,
+        groupMemberId: userId,
+      });
+      counts.trackers++;
+    }
+
+    await batch.commit();
+    return counts;
+  } catch (error) {
+    console.error('Error auto-merging data to group:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove current user's data from group and restore to personal account
+ * Called when user leaves a group
+ * Removes email suffix from names during transfer
+ * @returns {Promise<Object>} Counts of removed items per collection
+ */
+export const removeMemberDataFromGroup = async () => {
+  try {
+    const userId = getUserId();
+    const userEmail = auth.currentUser?.email || userId;
+    const batch = writeBatch(db);
+    
+    // Get user's current group
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    const groupId = userDoc.data()?.groupId;
+    
+    if (!groupId) {
+      throw new Error('User is not in a group');
+    }
+    
+    const personalKey = generateEncryptionKey(userId, null);
+    const groupKey = generateEncryptionKey(userId, groupId);
+    
+    let counts = {
+      activities: 0,
+      trackables: 0,
+      trackers: 0,
+      banks: 0,
+    };
+
+    // Helper to re-encrypt and remove email suffix
+    const reencryptField = (data, fieldName, fromKey, toKey) => {
+      if (!data[`_encrypted_${fieldName}`] || !data[fieldName]) return;
+      try {
+        const decryptedBytes = CryptoJS.AES.decrypt(data[fieldName], fromKey);
+        const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        const decryptedValue = JSON.parse(decryptedString);
+        const jsonString = JSON.stringify(decryptedValue);
+        data[fieldName] = CryptoJS.AES.encrypt(jsonString, toKey).toString();
+      } catch (err) {
+        console.error(`Failed to re-encrypt field ${fieldName}:`, err);
+      }
+    };
+
+    // Helper to remove email suffix from name
+    const removeEmailSuffix = (name, email) => {
+      const suffix = `-${email}`;
+      if (name.endsWith(suffix)) {
+        return name.slice(0, -suffix.length);
+      }
+      return name;
+    };
+
+    // Process all collections for this user
+    const collections = ['bankAccounts', 'trackables', 'activities', 'trackers'];
+    
+    for (const collectionName of collections) {
+      const q = query(collection(db, collectionName), where('groupMemberId', '==', userId));
+      const snapshot = await getDocs(q);
+      
+      for (const docSnapshot of snapshot.docs) {
+        const docData = { ...docSnapshot.data() };
+        
+        // Remove email suffix from name/description if present
+        const nameFields = ['name', 'cardName', 'description'];
+        for (const nameField of nameFields) {
+          if (docData[`_encrypted_${nameField}`] && docData[nameField]) {
+            try {
+              const decryptedBytes = CryptoJS.AES.decrypt(docData[nameField], groupKey);
+              const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+              let decryptedValue = JSON.parse(decryptedString);
+              
+              // Remove email suffix
+              decryptedValue = removeEmailSuffix(decryptedValue, userEmail);
+              
+              // Re-encrypt with personal key
+              const jsonString = JSON.stringify(decryptedValue);
+              docData[nameField] = CryptoJS.AES.encrypt(jsonString, personalKey).toString();
+            } catch (err) {
+              console.error(`Failed to process ${nameField}:`, err);
+            }
+          }
+        }
+        
+        // Re-encrypt all other encrypted fields with personal key
+        const allFields = ['amount', 'type', 'accountNumber', 'trackerAmount', 'includeInTracker', 'isDone', 'completedAt'];
+        for (const field of allFields) {
+          if (docData[`_encrypted_${field}`] && docData[field]) {
+            reencryptField(docData, field, groupKey, personalKey);
+          }
+        }
+        
+        const docRef = doc(db, collectionName, docSnapshot.id);
+        batch.update(docRef, {
+          ...docData,
+          groupId: null,
+          groupMemberId: null,
+          userId: userId,
+        });
+        
+        // Increment counter based on collection
+        if (collectionName === 'bankAccounts') counts.banks++;
+        else if (collectionName === 'trackables') counts.trackables++;
+        else if (collectionName === 'activities') counts.activities++;
+        else if (collectionName === 'trackers') counts.trackers++;
+      }
+    }
+
+    await batch.commit();
+    return counts;
+  } catch (error) {
+    console.error('Error removing member data from group:', error);
+    throw error;
+  }
+};

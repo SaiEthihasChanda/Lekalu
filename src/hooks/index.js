@@ -60,13 +60,18 @@ export const useBankAccounts = () => {
             setLoading(false);
           });
         } else {
-          // Not in group: ONLY show personal data
-          const personalQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
+          // Not in group: ONLY show personal data (where groupId is null/undefined)
+          const personalQuery = query(
+            collection(db, 'bankAccounts'),
+            where('userId', '==', userId)
+          );
           unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
+            const personalData = snapshot.docs
+              .filter(doc => !doc.data().groupId) // Exclude merged group data
+              .map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
             setAccounts(personalData);
             setLoading(false);
           });
@@ -183,13 +188,18 @@ export const useTrackables = () => {
             setLoading(false);
           });
         } else {
-          // Not in group: ONLY show personal data
-          const personalQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
+          // Not in group: ONLY show personal data (where groupId is null/undefined)
+          const personalQuery = query(
+            collection(db, 'trackables'),
+            where('userId', '==', userId)
+          );
           unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
+            const personalData = snapshot.docs
+              .filter(doc => !doc.data().groupId) // Exclude merged group data
+              .map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
             setTrackables(personalData);
             setLoading(false);
           });
@@ -307,13 +317,18 @@ export const useActivities = () => {
             setLoading(false);
           });
         } else {
-          // Not in group: ONLY show personal data
-          const personalQuery = query(collection(db, 'activities'), where('userId', '==', userId));
+          // Not in group: ONLY show personal data (where groupId is null/undefined)
+          const personalQuery = query(
+            collection(db, 'activities'),
+            where('userId', '==', userId)
+          );
           unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
+            const personalData = snapshot.docs
+              .filter(doc => !doc.data().groupId) // Exclude merged group data
+              .map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
             setActivities(personalData);
             setLoading(false);
           });
@@ -430,13 +445,18 @@ export const useTrackers = () => {
             setLoading(false);
           });
         } else {
-          // Not in group: ONLY show personal data
-          const personalQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
+          // Not in group: ONLY show personal data (where groupId is null/undefined)
+          const personalQuery = query(
+            collection(db, 'trackers'),
+            where('userId', '==', userId)
+          );
           unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-            const personalData = snapshot.docs.map(doc => {
-              const docData = { id: doc.id, ...doc.data() };
-              return decryptData(docData, encryptionKey);
-            });
+            const personalData = snapshot.docs
+              .filter(doc => !doc.data().groupId) // Exclude merged group data
+              .map(doc => {
+                const docData = { id: doc.id, ...doc.data() };
+                return decryptData(docData, encryptionKey);
+              });
             setTrackers(personalData);
             setLoading(false);
           });

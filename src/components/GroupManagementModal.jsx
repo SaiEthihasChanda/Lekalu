@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, LogOut, Trash2, Copy, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail, initializeAuth, migrateDataToGroup } from '../fb/index.js';
+import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail, initializeAuth, migrateDataToGroup, autoMergeDataToGroup, removeMemberDataFromGroup } from '../fb/index.js';
 
 /**
  * Group Management Modal
@@ -84,9 +84,20 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
       setGroup(newGroup);
       setGroupName('');
       setShowCreateGroup(false);
-      // Show migration dialog after successful group creation
-      setShowMigrationDialog(true);
-      setMigrationCounts(null);
+      
+      // Auto-merge personal data into group
+      try {
+        const counts = await autoMergeDataToGroup(newGroup.id);
+        setMigrationCounts(counts);
+        setShowMigrationDialog(true);
+      } catch (mergeErr) {
+        console.error('Auto-merge error:', mergeErr);
+        setShowMigrationDialog(false);
+        setMigrationCounts(null);
+      }
+      
+      setLoading(false);
+      if (onGroupUpdated) onGroupUpdated();
     } catch (err) {
       setError(err.message || 'Failed to create group');
       setLoading(false);
@@ -127,10 +138,22 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
       setGroup(joinedGroup);
       setGroupCode('');
       setShowJoinGroup(false);
+      
+      // Auto-merge personal data into group
+      try {
+        const counts = await autoMergeDataToGroup(joinedGroup.id);
+        setMigrationCounts(counts);
+        setShowMigrationDialog(true);
+      } catch (mergeErr) {
+        console.error('Auto-merge error:', mergeErr);
+        setShowMigrationDialog(false);
+        setMigrationCounts(null);
+      }
+      
+      setLoading(false);
       if (onGroupUpdated) onGroupUpdated();
     } catch (err) {
       setError(err.message || 'Failed to join group');
-    } finally {
       setLoading(false);
     }
   };
@@ -140,16 +163,20 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
     setLoading(true);
 
     try {
+      // Remove user's data from group and restore to personal account
+      await removeMemberDataFromGroup();
+      
+      // Then leave the group
       await leaveGroup();
       setGroup(null);
       setShowCreateGroup(false);
       setShowJoinGroup(false);
       setShowMigrationDialog(false);
       setMigrationCounts(null);
+      setLoading(false);
       if (onGroupUpdated) onGroupUpdated();
     } catch (err) {
       setError(err.message || 'Failed to leave group');
-    } finally {
       setLoading(false);
     }
   };
