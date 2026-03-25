@@ -64,16 +64,6 @@ export const AuthProvider = ({ children }) => {
           unsubscribeUserDocRef.current = onSnapshot(userDocRef, async (docSnapshot) => {
             const newGroupId = docSnapshot.exists() ? docSnapshot.data().groupId : null;
             
-            console.log('User document changed:', {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              hasUserDoc: docSnapshot.exists(),
-              newGroupId: newGroupId,
-              previousGroupId: currentGroupIdRef.current,
-              didGroupIdChange: newGroupId !== currentGroupIdRef.current,
-              firestoreData: docSnapshot.exists() ? docSnapshot.data() : 'no data'
-            });
-            
             // Only fetch if groupId actually changed (prevents duplicate fetches)
             if (newGroupId === currentGroupIdRef.current) {
               setLoading(false);

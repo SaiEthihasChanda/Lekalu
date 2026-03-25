@@ -8,18 +8,7 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
   const [creatorEmail, setCreatorEmail] = useState(null);
   
   // Validate activity data - if critical fields are missing/null, don't render
-  console.log('ActivityCard validation:', {
-    hasActivity: !!activity,
-    type: activity?.type,
-    typeIsNull: activity?.type === null,
-    typeIsUndefined: activity?.type === undefined,
-    amount: activity?.amount,
-    amountIsNull: activity?.amount === null,
-    allKeys: Object.keys(activity || {})
-  });
-  
   if (!activity || !activity.type || activity.amount == null) {
-    console.log('ActivityCard REJECTED - validation failed');
     return null;
   }
   
