@@ -3,7 +3,7 @@ import { Trash2, Edit2 } from 'lucide-react';
 
 export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [name, setName] = useState(trackable?.name || '');
-  const [accountId, setAccountId] = useState(trackable?.accountId || accounts[0]?.id || '');
+  const [accountId, setAccountId] = useState(trackable?.accountId || '');
   const [type, setType] = useState(trackable?.type || 'expense');
   const [includeInTracker, setIncludeInTracker] = useState(trackable?.includeInTracker || false);
   const [trackerAmount, setTrackerAmount] = useState(trackable?.trackerAmount?.toString() || '');
@@ -11,8 +11,8 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!name || !accountId) {
-      alert('Please fill in all required fields');
+    if (!name) {
+      alert('Please fill in the required fields');
       return;
     }
 
@@ -21,16 +21,26 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       return;
     }
 
-    onSubmit({
+    const data = {
       name,
-      accountId,
       type,
       includeInTracker,
-      trackerAmount: includeInTracker ? parseFloat(trackerAmount) : undefined,
-    });
+    };
+
+    // Only include trackerAmount if trackable is being tracked
+    if (includeInTracker && trackerAmount) {
+      data.trackerAmount = parseFloat(trackerAmount);
+    }
+
+    // Only include accountId if selected
+    if (accountId) {
+      data.accountId = accountId;
+    }
+
+    onSubmit(data);
 
     setName('');
-    setAccountId(accounts[0]?.id || '');
+    setAccountId('');
     setType('expense');
     setIncludeInTracker(false);
     setTrackerAmount('');
@@ -50,12 +60,13 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Account *</label>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Account</label>
         <select
           value={accountId}
           onChange={(e) => setAccountId(e.target.value)}
           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
         >
+          <option value="">Select an account (optional)</option>
           {accounts.map(acc => (
             <option key={acc.id} value={acc.id}>
               {acc.cardName} ({acc.accountNumber})

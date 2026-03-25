@@ -26,13 +26,25 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       return;
     }
 
-    onSubmit({
+    // Build data object without undefined fields
+    const data = {
       amount: parseFloat(amount),
       type,
-      trackableId: trackableId || undefined,
-      accountId: trackableId ? selectedTrackable.accountId : accountId,
       description,
-    });
+    };
+
+    // Add accountId only if it has a value
+    const finalAccountId = trackableId ? selectedTrackable?.accountId : accountId;
+    if (finalAccountId) {
+      data.accountId = finalAccountId;
+    }
+
+    // Only include trackableId if it's not empty
+    if (trackableId) {
+      data.trackableId = trackableId;
+    }
+
+    onSubmit(data);
 
     setAmount('');
     setType('expense');
@@ -81,21 +93,25 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
         />
       </div>
 
-      {filteredTrackables.length > 0 && type !== 'transfer' && (
+      {type !== 'transfer' && (
         <div>
           <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Trackable</label>
-          <select
-            value={trackableId}
-            onChange={(e) => setTrackableId(e.target.value)}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
-          >
-            <option value="">Select a trackable (optional)</option>
-            {filteredTrackables.map(t => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          {filteredTrackables.length > 0 ? (
+            <select
+              value={trackableId}
+              onChange={(e) => setTrackableId(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+            >
+              <option value="">Select a trackable (optional)</option>
+              {filteredTrackables.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-xs md:text-sm text-gray-400 py-2">No trackables created yet for this type</p>
+          )}
         </div>
       )}
 
