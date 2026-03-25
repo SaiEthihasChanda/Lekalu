@@ -6,16 +6,15 @@ import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
 import { useActivities, useBankAccounts, useTrackables } from '../hooks/index.js';
 import { formatAmount } from '../utils/analytics.js';
-import { getUserGroup, getUserEmail, initializeAuth } from '../fb/index.js';
+import { getUserEmail } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState('daily'); // daily, monthly, todate
-  const [userGroup, setUserGroup] = useState(null);
   const [memberEmails, setMemberEmails] = useState({});
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, group } = useAuth();
   const { accounts, loading: accountsLoading } = useBankAccounts();
   const { trackables, loading: tracksLoading } = useTrackables();
   
@@ -24,41 +23,34 @@ export const ActivityPage = () => {
     date: today.getTime(),
   });
 
-  // Load group information once auth is ready
+  // Fetch member emails when group changes
   useEffect(() => {
-    const loadGroupInfo = async () => {
-      if (authLoading || !user) {
-        console.log('Auth not ready yet, skipping group load');
+    const loadMemberEmails = async () => {
+      if (!group?.members) {
+        setMemberEmails({});
         return;
       }
 
       try {
-        const group = await getUserGroup();
-        console.log('Loaded group:', group); // Debug log
-        setUserGroup(group);
-
-        // Fetch member emails if in group
-        if (group?.members) {
-          const emails = {};
-          for (const memberId of group.members) {
-            try {
-              const email = await getUserEmail(memberId);
-              emails[memberId] = email || memberId;
-            } catch (err) {
-              console.error(`Error fetching email for ${memberId}:`, err);
-              emails[memberId] = memberId;
-            }
+        const emails = {};
+        for (const memberId of group.members) {
+          try {
+            const email = await getUserEmail(memberId);
+            emails[memberId] = email || memberId;
+          } catch (err) {
+            console.error(`Error fetching email for ${memberId}:`, err);
+            emails[memberId] = memberId;
           }
-          setMemberEmails(emails);
         }
+        setMemberEmails(emails);
       } catch (err) {
-        console.error('Error loading group info:', err);
-        setUserGroup(null);
+        console.error('Error loading member emails:', err);
+        setMemberEmails({});
       }
     };
 
-    loadGroupInfo();
-  }, [authLoading, user]);
+    loadMemberEmails();
+  }, [group?.members]);
 
   // Get date range based on filter
   const getDateRange = useMemo(() => {
@@ -167,7 +159,7 @@ export const ActivityPage = () => {
       </div>
 
       {/* Group Info Card */}
-      {userGroup && (
+      {group && (
         <div
           onClick={() => setIsGroupDetailsOpen(true)}
           className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-accent/50 rounded-lg p-4 mb-6 md:mb-8 cursor-pointer hover:border-accent transition-colors"
@@ -177,11 +169,11 @@ export const ActivityPage = () => {
               <Users size={20} className="text-accent" />
               <div>
                 <p className="text-xs text-gray-400">Group</p>
-                <p className="text-lg font-semibold text-white">{userGroup.name}</p>
+                <p className="text-lg font-semibold text-white">{group.name}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">{userGroup.members?.length || 0} members</p>
+              <p className="text-xs text-gray-400">{group.members?.length || 0} members</p>
               <p className="text-sm font-medium text-accent">Click to view</p>
             </div>
           </div>
@@ -253,26 +245,26 @@ export const ActivityPage = () => {
           <div className="space-y-4">
             <div>
               <p className="text-xs text-gray-400">Group Name</p>
-              <p className="text-lg font-semibold text-white">{userGroup?.name}</p>
+              <p className="text-lg font-semibold text-white">{group?.name}</p>
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 mb-3">Members ({userGroup?.members?.length || 0})</p>
+              <p className="text-xs text-gray-400 mb-3">Members ({group?.members?.length || 0})</p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {userGroup?.members?.map((memberId) => (
+                {group?.members?.map((memberId) => (
                   <div key={memberId} className={`flex items-center gap-2 p-3 rounded ${
-                    userGroup.owner === memberId 
+                    group.owner === memberId 
                       ? 'bg-yellow-500/20 border border-yellow-500/30' 
                       : 'bg-gray-700/30 border border-gray-600'
                   }`}>
                     <div className="flex-1">
                       <p className={`text-sm font-medium ${
-                        userGroup.owner === memberId ? 'text-yellow-400' : 'text-gray-300'
+                        group.owner === memberId ? 'text-yellow-400' : 'text-gray-300'
                       }`}>
                         {memberEmails[memberId] || memberId}
                       </p>
                     </div>
-                    {userGroup.owner === memberId && (
+                    {group.owner === memberId && (
                       <span className="text-lg">👑</span>
                     )}
                   </div>

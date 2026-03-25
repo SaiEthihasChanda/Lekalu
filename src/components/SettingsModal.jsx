@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Trash2, X, Users, Lock } from 'lucide-react';
-import { deleteAllUserData, getUserGroup, getUserId, initializeAuth } from '../fb/index.js';
+import { deleteAllUserData, getUserId, initializeAuth } from '../fb/index.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 
@@ -15,37 +16,8 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const [userGroup, setUserGroup] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [isGroupOwner, setIsGroupOwner] = useState(false);
-
-  // Load group information when modal opens
-  useEffect(() => {
-    const loadGroupInfo = async () => {
-      try {
-        // Ensure auth is initialized
-        await initializeAuth();
-        
-        const userId = getUserId();
-        setCurrentUserId(userId);
-        
-        const group = await getUserGroup();
-        setUserGroup(group);
-        
-        if (group && group.owner === userId) {
-          setIsGroupOwner(true);
-        } else {
-          setIsGroupOwner(false);
-        }
-      } catch (err) {
-        console.error('Error loading group info:', err);
-      }
-    };
-
-    if (isOpen) {
-      loadGroupInfo();
-    }
-  }, [isOpen]);
+  const { group, user } = useAuth();
+  const isGroupOwner = group && user && group.owner === user.uid;
 
   const handleClearData = async () => {
     setError('');
@@ -131,7 +103,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               </div>
             )}
 
-            {userGroup && !isGroupOwner ? (
+            {group && !isGroupOwner ? (
               <div className="p-3 bg-orange-500/10 border border-orange-500/50 rounded-lg flex items-start gap-3">
                 <Lock size={18} className="text-orange-400 flex-shrink-0 mt-0.5" />
                 <div>
