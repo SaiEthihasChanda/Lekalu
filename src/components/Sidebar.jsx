@@ -1,12 +1,14 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X } from 'lucide-react';
+import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useOnboarding } from '../contexts/OnboardingContext.jsx';
 import { logoutUser } from '../fb/index.js';
 
 export const Sidebar = ({ isOpen, onClose, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { startTour } = useOnboarding();
 
   const navItems = [
     { path: '/', label: 'Activity', icon: Activity },
@@ -47,7 +49,9 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
       )}
 
       {/* Sidebar */}
-      <aside className={`
+      <aside 
+        id="tour-sidebar"
+        className={`
         fixed md:sticky top-0 left-0 h-screen w-64 bg-secondary border-r border-gray-700 
         flex flex-col z-40 transition-transform duration-300 transform
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -87,11 +91,22 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
         </nav>
 
         {/* User Info & Logout */}
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-gray-700 space-y-2">
           <div className="mb-4 px-2 min-w-0">
             <p className="text-xs text-gray-400">Logged in as</p>
             <p className="text-sm text-white truncate font-medium">{user?.email}</p>
           </div>
+          <button
+            onClick={() => {
+              handleNavClick();
+              startTour();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-sm md:text-base"
+            title="Start guided tour"
+          >
+            <HelpCircle size={20} />
+            <span>Help & Tour</span>
+          </button>
           <button
             onClick={() => {
               handleNavClick();
