@@ -488,10 +488,19 @@ export const useActivities = () => {
         userId,
         groupId: group?.id,
         isInGroup: !!group,
-        dataKeys: Object.keys(data)
+        dataKeys: Object.keys(data),
+        willSetGroupId: group?.id || 'null (personal)',
+        encryptionKeyPreview: encryptionKey.substring(0, 16) + '...'
       });
       
       const encryptedData = encryptData(data, encryptionKey);
+      
+      console.log('Encrypted activity data:', {
+        hasEncryptedType: !!encryptedData._encrypted_type,
+        hasEncryptedAmount: !!encryptedData._encrypted_amount,
+        encryptedType: encryptedData._encrypted_type ? encryptedData._encrypted_type.substring(0, 20) + '...' : 'N/A',
+        encryptedAmount: encryptedData._encrypted_amount ? encryptedData._encrypted_amount.substring(0, 20) + '...' : 'N/A'
+      });
       
       const docRef = await addDoc(collection(db, 'activities'), {
         ...encryptedData,
@@ -501,7 +510,7 @@ export const useActivities = () => {
         updatedAt: serverTimestamp(),
       });
       
-      console.log('Activity added successfully:', { docId: docRef.id, groupId: group?.id });
+      console.log('Activity added successfully:', { docId: docRef.id, groupId: group?.id, willShowUpIn: group?.id ? 'group activities' : 'personal activities' });
       return docRef.id;
     } catch (err) {
       console.error('Error adding activity:', err);
