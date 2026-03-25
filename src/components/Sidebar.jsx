@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut } from 'lucide-react';
+import { BarChart3, TrendingUp, CheckSquare, Settings, Activity, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { logoutUser } from '../fb/index.js';
 
-export const Sidebar = () => {
+export const Sidebar = ({ isOpen, onClose, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -24,55 +24,86 @@ export const Sidebar = () => {
     }
   };
 
+  const handleNavClick = () => {
+    onClose();
+  };
+
   return (
-    <aside className="w-64 bg-secondary border-r border-gray-700 h-screen sticky top-0 flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-accent flex items-center gap-2">
-          <TrendingUp size={28} />
-          Lekalu
-        </h1>
-        <p className="text-xs text-gray-400 mt-1">Expense Tracker</p>
-      </div>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={onToggle}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 hover:bg-gray-700 rounded-lg"
+      >
+        {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
+      </button>
 
-      <nav className="mt-8 px-4 flex-1">
-        <ul className="space-y-2">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 md:hidden z-40"
+          onClick={onClose}
+        />
+      )}
 
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-accent text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                  }`}
-                >
-                  <Icon size={20} />
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* User Info & Logout */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="mb-4 px-2">
-          <p className="text-xs text-gray-400">Logged in as</p>
-          <p className="text-sm text-white truncate font-medium">{user?.email}</p>
+      {/* Sidebar */}
+      <aside className={`
+        fixed md:sticky top-0 left-0 h-screen w-64 bg-secondary border-r border-gray-700 
+        flex flex-col z-40 transition-transform duration-300 transform
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="p-4 md:p-6 pt-16 md:pt-6">
+          <h1 className="text-xl md:text-2xl font-bold text-accent flex items-center gap-2">
+            <TrendingUp size={24} />
+            <span>Lekalu</span>
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">Expense Tracker</p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-        >
-          <LogOut size={20} />
-          <span>Logout</span>
-        </button>
-      </div>
-    </aside>
+
+        <nav className="mt-4 md:mt-8 px-4 flex-1 overflow-y-auto">
+          <ul className="space-y-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    onClick={handleNavClick}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base ${
+                      isActive
+                        ? 'bg-accent text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* User Info & Logout */}
+        <div className="p-4 border-t border-gray-700">
+          <div className="mb-4 px-2 min-w-0">
+            <p className="text-xs text-gray-400">Logged in as</p>
+            <p className="text-sm text-white truncate font-medium">{user?.email}</p>
+          </div>
+          <button
+            onClick={() => {
+              handleNavClick();
+              handleLogout();
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors text-sm md:text-base"
+          >
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };

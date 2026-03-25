@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
@@ -34,12 +34,13 @@ const PrivateRoute = ({ children }) => {
 
 function AppContent() {
   const { user } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // If user is logged in, show the main app with sidebar
   if (user) {
     return (
-      <div className="flex h-screen bg-primary">
-        <Sidebar />
+      <div className="flex flex-col md:flex-row h-screen bg-primary">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onToggle={() => setSidebarOpen(!sidebarOpen)} />
         <main className="flex-1 overflow-y-auto">
           <Routes>
             <Route path="/" element={<ActivityPage />} />

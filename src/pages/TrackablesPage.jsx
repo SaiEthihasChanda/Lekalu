@@ -61,17 +61,17 @@ export const TrackablesPage = () => {
   const accountsMap = new Map(accounts.map(a => [a.id, a]));
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Trackables</h1>
-        <p className="text-gray-400">Manage your recurring income and expenses</p>
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Trackables</h1>
+        <p className="text-sm md:text-base text-gray-400">Manage your recurring income and expenses</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-gray-700">
+      <div className="flex gap-4 mb-6 md:mb-8 border-b border-gray-700 overflow-x-auto">
         <button
           onClick={() => setActiveTab('trackables')}
-          className={`pb-4 px-4 font-medium transition-colors ${
+          className={`pb-4 px-3 md:px-4 font-medium transition-colors text-sm md:text-base whitespace-nowrap ${
             activeTab === 'trackables'
               ? 'text-accent border-b-2 border-accent'
               : 'text-gray-400 hover:text-gray-300'
@@ -81,7 +81,7 @@ export const TrackablesPage = () => {
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`pb-4 px-4 font-medium transition-colors ${
+          className={`pb-4 px-3 md:px-4 font-medium transition-colors text-sm md:text-base whitespace-nowrap ${
             activeTab === 'accounts'
               ? 'text-accent border-b-2 border-accent'
               : 'text-gray-400 hover:text-gray-300'
@@ -96,15 +96,15 @@ export const TrackablesPage = () => {
         <div>
           <button
             onClick={() => setIsTrackableModalOpen(true)}
-            className="flex items-center gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors"
+            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
           >
             <Plus size={20} />
             Add Trackable
           </button>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3 md:gap-4">
             {trackables.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-gray-400 text-sm md:text-base">
                 No trackables created yet. Add one to get started!
               </div>
             ) : (
@@ -127,15 +127,15 @@ export const TrackablesPage = () => {
         <div>
           <button
             onClick={() => setIsAccountModalOpen(true)}
-            className="flex items-center gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors"
+            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
           >
             <Plus size={20} />
             Add Bank Account
           </button>
 
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {accounts.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-gray-400 text-sm md:text-base">
                 No bank accounts added yet. Add one to get started!
               </div>
             ) : (

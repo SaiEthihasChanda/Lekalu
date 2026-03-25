@@ -44,25 +44,25 @@ export const ActivityPage = () => {
   const accountsMap = new Map(accounts.map(a => [a.id, a]));
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Today's Activity</h1>
-        <p className="text-gray-400">Track your daily income and expenses</p>
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Today's Activity</h1>
+        <p className="text-sm md:text-base text-gray-400">Track your daily income and expenses</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Total Income</p>
-          <p className="text-2xl font-bold text-green-400">{formatAmount(todayStats.totalIncome)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Income</p>
+          <p className="text-xl md:text-2xl font-bold text-green-400">{formatAmount(todayStats.totalIncome)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Total Expense</p>
-          <p className="text-2xl font-bold text-red-400">{formatAmount(todayStats.totalExpense)}</p>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Expense</p>
+          <p className="text-xl md:text-2xl font-bold text-red-400">{formatAmount(todayStats.totalExpense)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Net Flow</p>
-          <p className={`text-2xl font-bold ${todayStats.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Net Flow</p>
+          <p className={`text-xl md:text-2xl font-bold ${todayStats.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatAmount(todayStats.netFlow)}
           </p>
         </div>
@@ -71,7 +71,7 @@ export const ActivityPage = () => {
       {/* Add Activity Button */}
       <button
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg mb-6 transition-colors"
+        className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg mb-6 transition-colors text-sm md:text-base"
       >
         <Plus size={20} />
         Add Activity

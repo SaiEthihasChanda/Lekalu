@@ -100,40 +100,40 @@ export const TrackerPage = () => {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Monthly Tracker</h1>
-        <p className="text-gray-400">Track your recurring monthly expenses</p>
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Monthly Tracker</h1>
+        <p className="text-sm md:text-base text-gray-400">Track your recurring monthly expenses</p>
       </div>
 
       {/* Month Navigation */}
-      <div className="flex items-center justify-between mb-8 bg-secondary rounded-lg p-6">
+      <div className="flex items-center justify-between mb-6 md:mb-8 bg-secondary rounded-lg p-4 md:p-6 gap-4">
         <button
           onClick={previousMonth}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700 rounded"
         >
-          <ChevronLeft size={24} />
+          <ChevronLeft size={20} />
         </button>
 
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-white">
-            {format(currentDate, 'MMMM yyyy')}
+        <div className="text-center flex-1 min-w-0">
+          <h2 className="text-lg md:text-2xl font-bold text-white whitespace-nowrap">
+            {format(currentDate, 'MMM yyyy')}
           </h2>
         </div>
 
         <button
           onClick={nextMonth}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700 rounded"
         >
-          <ChevronRight size={24} />
+          <ChevronRight size={20} />
         </button>
       </div>
 
       {/* Progress Summary */}
-      <div className="bg-secondary rounded-lg p-6 mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-gray-300 font-medium">Monthly Progress</span>
-          <span className="text-white font-bold">
+      <div className="bg-secondary rounded-lg p-4 md:p-6 mb-6 md:mb-8">
+        <div className="flex justify-between items-center mb-4 gap-2">
+          <span className="text-gray-300 font-medium text-sm md:text-base">Monthly Progress</span>
+          <span className="text-white font-bold text-sm md:text-base">
             {completedCount} / {totalCount}
           </span>
         </div>
@@ -143,11 +143,11 @@ export const TrackerPage = () => {
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
-        <p className="text-gray-400 text-sm mt-2">{progressPercentage}% Complete</p>
+        <p className="text-gray-400 text-xs md:text-sm mt-2">{progressPercentage}% Complete</p>
       </div>
 
       {/* Trackables List */}
-      <div className="space-y-3">
+      <div className="space-y-2 md:space-y-3">
         {trackablesForThisMonth.length === 0 ? (
           <div className="text-center py-12 text-gray-400 bg-secondary rounded-lg">
             No trackables to track this month. Add trackables to get started!

@@ -163,23 +163,23 @@ export const AnalyticsPage = () => {
   const accountEntries = Object.entries(analytics.byAccount);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Analytics</h1>
-        <p className="text-gray-400">Analyze your spending patterns</p>
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Analytics</h1>
+        <p className="text-sm md:text-base text-gray-400">Analyze your spending patterns</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-6 mb-8">
-        <h2 className="text-lg font-semibold text-white mb-4">Filters</h2>
+      <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6 mb-6 md:mb-8">
+        <h2 className="text-base md:text-lg font-semibold text-white mb-4">Filters</h2>
         
-        <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Time Range</label>
+            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
             >
               <option value="today">Today</option>
               <option value="week">This Week</option>
@@ -192,32 +192,32 @@ export const AnalyticsPage = () => {
           {timeRange === 'custom' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">End Date</label>
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">End Date</label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
                 />
               </div>
             </>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Account</label>
+            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
             <select
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
             >
               <option value="">All Accounts</option>
               {accounts.map(acc => (
@@ -229,11 +229,11 @@ export const AnalyticsPage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Trackable</label>
+            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Trackable</label>
             <select
               value={selectedTrackableId}
               onChange={(e) => setSelectedTrackableId(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
             >
               <option value="">All Trackables</option>
               {trackables.map(t => (
@@ -247,24 +247,24 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Total Income</p>
-          <p className="text-2xl font-bold text-green-400">{formatAmount(analytics.totalIncome)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Income</p>
+          <p className="text-xl md:text-2xl font-bold text-green-400">{formatAmount(analytics.totalIncome)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Total Expense</p>
-          <p className="text-2xl font-bold text-red-400">{formatAmount(analytics.totalExpense)}</p>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Expense</p>
+          <p className="text-xl md:text-2xl font-bold text-red-400">{formatAmount(analytics.totalExpense)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Net Flow</p>
-          <p className={`text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Net Flow</p>
+          <p className={`text-xl md:text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {formatAmount(analytics.netFlow)}
           </p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
-          <p className="text-gray-400 text-sm mb-2">Expense/Income Ratio</p>
-          <p className="text-2xl font-bold text-accent">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-2">Expense/Income Ratio</p>
+          <p className="text-xl md:text-2xl font-bold text-accent">
             {analytics.totalIncome > 0
               ? ((analytics.totalExpense / analytics.totalIncome) * 100).toFixed(1)
               : '0'}
@@ -274,9 +274,9 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
         {/* Income vs Expense Pie Chart */}
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <PieChart size={20} className="text-accent" />
             <h2 className="text-lg font-semibold text-white">Income vs Expense</h2>

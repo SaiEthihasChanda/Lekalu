@@ -25,27 +25,27 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   if (!isOpen) return null;
 
   const sizeClasses = {
-    sm: 'w-96',
-    md: 'w-[500px]',
-    lg: 'w-[700px]',
+    sm: 'md:w-96 w-[90vw]',
+    md: 'md:w-[500px] w-[90vw]',
+    lg: 'md:w-[700px] w-[90vw]',
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div
         ref={modalRef}
         className={`bg-secondary rounded-lg shadow-xl max-h-[90vh] overflow-y-auto ${sizeClasses[size]}`}
       >
-        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-primary bg-secondary">
-          <h2 className="text-xl font-semibold text-white">{title}</h2>
+        <div className="sticky top-0 flex items-center justify-between p-4 md:p-6 border-b border-primary bg-secondary gap-2">
+          <h2 className="text-lg md:text-xl font-semibold text-white flex-1 truncate">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-primary rounded-lg transition-colors"
+            className="p-2 hover:bg-primary rounded-lg transition-colors flex-shrink-0"
           >
             <X size={20} className="text-gray-400" />
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-4 md:p-6">{children}</div>
       </div>
     </div>
   );
