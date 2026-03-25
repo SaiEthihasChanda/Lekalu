@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+FIREBASE_CLI_SETUP.md
+FIRESTORE_RULES_GUIDE.md

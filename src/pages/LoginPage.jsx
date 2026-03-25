@@ -44,7 +44,7 @@ export const LoginPage = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <TrendingUp size={32} className="text-accent" />
-            <h1 className="text-3xl font-bold text-white">Lekalu</h1>
+            <h1 className="text-3xl font-bold text-white">Lekkalu</h1>
           </div>
           <p className="text-gray-400">Personal Expense Tracker</p>
         </div>
