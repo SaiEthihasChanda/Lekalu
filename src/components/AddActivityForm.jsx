@@ -19,13 +19,6 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       return;
     }
 
-    // If trackable is selected, we don't need to validate accountId (it comes from trackable)
-    // Otherwise, accountId is required
-    if (!trackableId && !accountId) {
-      alert('Please select an account or trackable');
-      return;
-    }
-
     // Build data object without undefined fields
     const data = {
       amount: parseFloat(amount),
@@ -117,7 +110,7 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
 
       {!trackableId && (
         <div>
-          <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account *</label>
+          <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
@@ -132,7 +125,7 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
         </div>
       )}
 
-      {trackableId && selectedTrackable && (
+      {trackableId && selectedTrackable && selectedTrackable.accountId && (
         <div className="bg-secondary rounded-lg p-3 border border-gray-600">
           <p className="text-xs md:text-sm text-gray-400 mb-1">Account (from trackable)</p>
           <p className="text-white font-medium text-sm md:text-base">
@@ -141,6 +134,24 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
               return account ? `${account.cardName} (${account.accountNumber})` : 'Unknown Account';
             })()}
           </p>
+        </div>
+      )}
+
+      {trackableId && selectedTrackable && !selectedTrackable.accountId && (
+        <div>
+          <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account (optional)</label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+          >
+            <option value="">No account</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>
+                {acc.cardName} ({acc.accountNumber})
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
