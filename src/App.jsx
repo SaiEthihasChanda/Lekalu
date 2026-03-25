@@ -41,7 +41,7 @@ function AppContent() {
     return (
       <div className="flex flex-col md:flex-row h-screen bg-primary">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
           <Routes>
             <Route path="/" element={<ActivityPage />} />
             <Route path="/trackables" element={<TrackablesPage />} />
