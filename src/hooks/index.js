@@ -48,30 +48,29 @@ export const useBankAccounts = () => {
         // Get user's group
         const userGroup = await getUserGroup();
         
-        // Personal accounts query
-        const personalQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
-        
-        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-          const personalData = snapshot.docs.map(doc => {
-            const docData = { id: doc.id, ...doc.data() };
-            return decryptData(docData, encryptionKey);
-          });
-          
-          // If in group, also subscribe to group data
-          if (userGroup) {
-            const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', userGroup.id));
-            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
-              const groupData = groupSnapshot.docs.map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-              setAccounts([...personalData, ...groupData]);
+        if (userGroup) {
+          // In group: ONLY show group data
+          const groupQuery = query(collection(db, 'bankAccounts'), where('groupId', '==', userGroup.id));
+          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
+            const groupData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
             });
-          } else {
+            setAccounts(groupData);
+            setLoading(false);
+          });
+        } else {
+          // Not in group: ONLY show personal data
+          const personalQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
+          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+            const personalData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
+            });
             setAccounts(personalData);
-          }
-          setLoading(false);
-        });
+            setLoading(false);
+          });
+        }
       } catch (err) {
         console.error('Error setting up bank accounts listener:', err);
         setError(err);
@@ -172,30 +171,29 @@ export const useTrackables = () => {
         // Get user's group
         const userGroup = await getUserGroup();
         
-        // Personal trackables query
-        const personalQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
-        
-        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-          const personalData = snapshot.docs.map(doc => {
-            const docData = { id: doc.id, ...doc.data() };
-            return decryptData(docData, encryptionKey);
-          });
-          
-          // If in group, also subscribe to group data
-          if (userGroup) {
-            const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', userGroup.id));
-            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
-              const groupData = groupSnapshot.docs.map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-              setTrackables([...personalData, ...groupData]);
+        if (userGroup) {
+          // In group: ONLY show group data
+          const groupQuery = query(collection(db, 'trackables'), where('groupId', '==', userGroup.id));
+          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
+            const groupData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
             });
-          } else {
+            setTrackables(groupData);
+            setLoading(false);
+          });
+        } else {
+          // Not in group: ONLY show personal data
+          const personalQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
+          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+            const personalData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
+            });
             setTrackables(personalData);
-          }
-          setLoading(false);
-        });
+            setLoading(false);
+          });
+        }
       } catch (err) {
         console.error('Error setting up trackables listener:', err);
         setError(err);
@@ -297,30 +295,29 @@ export const useActivities = () => {
         // Get user's group
         const userGroup = await getUserGroup();
         
-        // Personal activities query
-        const personalQuery = query(collection(db, 'activities'), where('userId', '==', userId));
-        
-        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-          const personalData = snapshot.docs.map(doc => {
-            const docData = { id: doc.id, ...doc.data() };
-            return decryptData(docData, encryptionKey);
-          });
-          
-          // If in group, also subscribe to group data
-          if (userGroup) {
-            const groupQuery = query(collection(db, 'activities'), where('groupId', '==', userGroup.id));
-            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
-              const groupData = groupSnapshot.docs.map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-              setActivities([...personalData, ...groupData]);
+        if (userGroup) {
+          // In group: ONLY show group data
+          const groupQuery = query(collection(db, 'activities'), where('groupId', '==', userGroup.id));
+          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
+            const groupData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
             });
-          } else {
+            setActivities(groupData);
+            setLoading(false);
+          });
+        } else {
+          // Not in group: ONLY show personal data
+          const personalQuery = query(collection(db, 'activities'), where('userId', '==', userId));
+          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+            const personalData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
+            });
             setActivities(personalData);
-          }
-          setLoading(false);
-        });
+            setLoading(false);
+          });
+        }
       } catch (err) {
         console.error('Error setting up activities listener:', err);
         setError(err);
@@ -421,30 +418,29 @@ export const useTrackers = () => {
         // Get user's group
         const userGroup = await getUserGroup();
         
-        // Personal trackers query
-        const personalQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
-        
-        unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
-          const personalData = snapshot.docs.map(doc => {
-            const docData = { id: doc.id, ...doc.data() };
-            return decryptData(docData, encryptionKey);
-          });
-          
-          // If in group, also subscribe to group data
-          if (userGroup) {
-            const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', userGroup.id));
-            unsubscribeGroup = onSnapshot(groupQuery, (groupSnapshot) => {
-              const groupData = groupSnapshot.docs.map(doc => {
-                const docData = { id: doc.id, ...doc.data() };
-                return decryptData(docData, encryptionKey);
-              });
-              setTrackers([...personalData, ...groupData]);
+        if (userGroup) {
+          // In group: ONLY show group data
+          const groupQuery = query(collection(db, 'trackers'), where('groupId', '==', userGroup.id));
+          unsubscribeGroup = onSnapshot(groupQuery, (snapshot) => {
+            const groupData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
             });
-          } else {
+            setTrackers(groupData);
+            setLoading(false);
+          });
+        } else {
+          // Not in group: ONLY show personal data
+          const personalQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
+          unsubscribePersonal = onSnapshot(personalQuery, (snapshot) => {
+            const personalData = snapshot.docs.map(doc => {
+              const docData = { id: doc.id, ...doc.data() };
+              return decryptData(docData, encryptionKey);
+            });
             setTrackers(personalData);
-          }
-          setLoading(false);
-        });
+            setLoading(false);
+          });
+        }
       } catch (err) {
         console.error('Error setting up trackers listener:', err);
         setError(err);
