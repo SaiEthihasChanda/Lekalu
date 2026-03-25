@@ -50,9 +50,20 @@ export const ActivityPage = () => {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Today's Activity</h1>
-        <p className="text-sm md:text-base text-gray-400">Track your daily income and expenses</p>
+      {/* Header with Button (Mobile: side by side) */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 mb-6 md:mb-8">
+        <div className="flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Today's Activity</h1>
+          <p className="text-sm md:text-base text-gray-400">Track your daily income and expenses</p>
+        </div>
+        <button
+          id="tour-add-activity"
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2.5 md:py-3 px-6 rounded-lg transition-colors text-sm md:text-base w-fit"
+        >
+          <Plus size={18} className="md:w-5 md:h-5" />
+          Add Activity
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -72,16 +83,6 @@ export const ActivityPage = () => {
           </p>
         </div>
       </div>
-
-      {/* Add Activity Button */}
-      <button
-        id="tour-add-activity"
-        onClick={() => setIsModalOpen(true)}
-        className="flex items-center justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2.5 md:py-3 px-6 md:px-6 rounded-lg mb-6 transition-colors text-sm md:text-base w-fit"
-      >
-        <Plus size={18} className="md:w-5 md:h-5" />
-        Add Activity
-      </button>
 
       {/* Activities List */}
       <div className="space-y-3">
