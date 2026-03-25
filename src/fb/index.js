@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
 import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import CryptoJS from 'crypto-js';
+import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
 
 /**
  * Replace these with your Firebase project credentials
@@ -396,6 +398,7 @@ export const getUserEmail = async (userId) => {
 
 /**
  * Migrate all personal data (activities, trackables, trackers, banks) to a group
+ * Re-encrypts data with group encryption key so all members can decrypt each other's data
  * @param {string} groupId - Target group ID
  * @returns {Promise<Object>} Migration result with counts
  */
@@ -403,6 +406,11 @@ export const migrateDataToGroup = async (groupId) => {
   try {
     const userId = getUserId();
     const batch = writeBatch(db);
+    
+    // Generate encryption keys
+    const personalKey = generateEncryptionKey(userId, null); // Original personal key
+    const groupKey = generateEncryptionKey(userId, groupId);  // New group key
+    
     let counts = {
       activities: 0,
       trackables: 0,
@@ -410,12 +418,38 @@ export const migrateDataToGroup = async (groupId) => {
       banks: 0,
     };
 
+    // Helper function to re-encrypt a field
+    const reencryptField = (data, fieldName, personalKey, groupKey) => {
+      if (!data[`_encrypted_${fieldName}`] || !data[fieldName]) {
+        return; // Field not encrypted, skip
+      }
+      try {
+        // Decrypt with personal key
+        const decryptedBytes = CryptoJS.AES.decrypt(data[fieldName], personalKey);
+        const decryptedString = decryptedBytes.toString(CryptoJS.enc.Utf8);
+        const decryptedValue = JSON.parse(decryptedString);
+        
+        // Re-encrypt with group key
+        const jsonString = JSON.stringify(decryptedValue);
+        data[fieldName] = CryptoJS.AES.encrypt(jsonString, groupKey).toString();
+      } catch (err) {
+        console.error(`Failed to re-encrypt field ${fieldName}:`, err);
+      }
+    };
+
     // Migrate activities
     const activitiesQuery = query(collection(db, 'activities'), where('userId', '==', userId));
     const activitiesSnapshot = await getDocs(activitiesQuery);
     activitiesSnapshot.forEach((docSnapshot) => {
+      const docData = { ...docSnapshot.data() };
+      // Re-encrypt sensitive fields
+      ['amount', 'description', 'type'].forEach(field => reencryptField(docData, field, personalKey, groupKey));
+      
       const docRef = doc(db, 'activities', docSnapshot.id);
-      batch.update(docRef, { groupId: groupId });
+      batch.update(docRef, { 
+        ...docData,
+        groupId: groupId 
+      });
       counts.activities++;
     });
 
@@ -423,8 +457,15 @@ export const migrateDataToGroup = async (groupId) => {
     const trackablesQuery = query(collection(db, 'trackables'), where('userId', '==', userId));
     const trackablesSnapshot = await getDocs(trackablesQuery);
     trackablesSnapshot.forEach((docSnapshot) => {
+      const docData = { ...docSnapshot.data() };
+      // Re-encrypt sensitive fields
+      ['name', 'type', 'amount', 'trackerAmount', 'includeInTracker'].forEach(field => reencryptField(docData, field, personalKey, groupKey));
+      
       const docRef = doc(db, 'trackables', docSnapshot.id);
-      batch.update(docRef, { groupId: groupId });
+      batch.update(docRef, { 
+        ...docData,
+        groupId: groupId 
+      });
       counts.trackables++;
     });
 
@@ -432,8 +473,15 @@ export const migrateDataToGroup = async (groupId) => {
     const trackersQuery = query(collection(db, 'trackers'), where('userId', '==', userId));
     const trackersSnapshot = await getDocs(trackersQuery);
     trackersSnapshot.forEach((docSnapshot) => {
+      const docData = { ...docSnapshot.data() };
+      // Re-encrypt sensitive fields
+      ['isDone', 'completedAt'].forEach(field => reencryptField(docData, field, personalKey, groupKey));
+      
       const docRef = doc(db, 'trackers', docSnapshot.id);
-      batch.update(docRef, { groupId: groupId });
+      batch.update(docRef, { 
+        ...docData,
+        groupId: groupId 
+      });
       counts.trackers++;
     });
 
@@ -441,8 +489,15 @@ export const migrateDataToGroup = async (groupId) => {
     const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
     const banksSnapshot = await getDocs(banksQuery);
     banksSnapshot.forEach((docSnapshot) => {
+      const docData = { ...docSnapshot.data() };
+      // Re-encrypt sensitive fields
+      ['cardName', 'accountNumber'].forEach(field => reencryptField(docData, field, personalKey, groupKey));
+      
       const docRef = doc(db, 'bankAccounts', docSnapshot.id);
-      batch.update(docRef, { groupId: groupId });
+      batch.update(docRef, { 
+        ...docData,
+        groupId: groupId 
+      });
       counts.banks++;
     });
 

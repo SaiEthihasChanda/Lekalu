@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { auth, db, getUserGroup as fetchUserGroup } from '../fb/index.js';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 /**
  * @typedef {Object} AuthContextType
@@ -23,17 +23,31 @@ export const AuthProvider = ({ children }) => {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const unsubscribeUserDocRef = useRef(null);
+  const currentGroupIdRef = useRef(null);
+  const groupFetchTimeoutRef = useRef(null);
 
   useEffect(() => {
     // Subscribe to auth state changes
     const unsubscribe = auth.onAuthStateChanged(
       async (currentUser) => {
         try {
+          // Clean up previous user doc listener
+          if (unsubscribeUserDocRef.current) {
+            unsubscribeUserDocRef.current();
+          }
+          
+          // Clean up any pending group fetch
+          if (groupFetchTimeoutRef.current) {
+            clearTimeout(groupFetchTimeoutRef.current);
+          }
+
           setUser(currentUser);
           
           // Reset group on logout
           if (!currentUser) {
             setGroup(null);
+            currentGroupIdRef.current = null;
             setLoading(false);
             return;
           }
@@ -46,21 +60,52 @@ export const AuthProvider = ({ children }) => {
             displayName: currentUser.displayName,
           }, { merge: true });
 
-          // Fetch and cache user's group once
-          try {
-            const userGroup = await fetchUserGroup();
-            setGroup(userGroup);
-          } catch (groupError) {
-            console.error('Error fetching user group:', groupError);
+          // Listen to user document changes to detect group changes in real-time
+          unsubscribeUserDocRef.current = onSnapshot(userDocRef, async (docSnapshot) => {
+            const newGroupId = docSnapshot.exists() ? docSnapshot.data().groupId : null;
+            
+            // Only fetch if groupId actually changed (prevents duplicate fetches)
+            if (newGroupId === currentGroupIdRef.current) {
+              setLoading(false);
+              return;
+            }
+            
+            currentGroupIdRef.current = newGroupId;
+
+            if (newGroupId) {
+              // User has a group - debounce fetch to avoid rapid re-encryptions
+              if (groupFetchTimeoutRef.current) {
+                clearTimeout(groupFetchTimeoutRef.current);
+              }
+              
+              groupFetchTimeoutRef.current = setTimeout(async () => {
+                try {
+                  const userGroup = await fetchUserGroup();
+                  setGroup(userGroup);
+                } catch (groupError) {
+                  console.error('Error fetching user group:', groupError);
+                  setGroup(null);
+                }
+                setLoading(false);
+              }, 300); // 300ms debounce to ensure state consistency
+            } else {
+              // User left the group
+              setGroup(null);
+              setLoading(false);
+            }
+          }, (err) => {
+            console.error('Error listening to user document:', err);
             setGroup(null);
-          }
+            currentGroupIdRef.current = null;
+            setLoading(false);
+          });
           
           setError(null);
         } catch (err) {
           console.error('Error in auth state change:', err);
           setError(err);
           setGroup(null);
-        } finally {
+          currentGroupIdRef.current = null;
           setLoading(false);
         }
       },
@@ -68,11 +113,20 @@ export const AuthProvider = ({ children }) => {
         console.error('Auth state change error:', err);
         setError(err);
         setGroup(null);
+        currentGroupIdRef.current = null;
         setLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubscribeUserDocRef.current) {
+        unsubscribeUserDocRef.current();
+      }
+      if (groupFetchTimeoutRef.current) {
+        clearTimeout(groupFetchTimeoutRef.current);
+      }
+    };
   }, []);
 
   return (
