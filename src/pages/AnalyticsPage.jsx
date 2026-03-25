@@ -260,10 +260,10 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6 mb-6 md:mb-8">
-        <h2 className="text-base md:text-lg font-semibold text-white mb-4">Filters</h2>
+      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8\">
+        <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4\">Filters</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4\">
           <div>
             <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
             <select
@@ -337,24 +337,24 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Income</p>
-          <p className="text-xl md:text-2xl font-bold text-green-400">{formatAmount(analytics.totalIncome)}</p>
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-8">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Income</p>
+          <p className="text-lg md:text-2xl font-bold text-green-400 truncate">{formatAmount(analytics.totalIncome)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-2">Total Expense</p>
-          <p className="text-xl md:text-2xl font-bold text-red-400">{formatAmount(analytics.totalExpense)}</p>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Expense</p>
+          <p className="text-lg md:text-2xl font-bold text-red-400 truncate">{formatAmount(analytics.totalExpense)}</p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-2">Net Flow</p>
-          <p className={`text-xl md:text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Net Flow</p>
+          <p className={`text-lg md:text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
             {formatAmount(analytics.netFlow)}
           </p>
         </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-2">Expense/Income Ratio</p>
-          <p className="text-xl md:text-2xl font-bold text-accent">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Expense/Income Ratio</p>
+          <p className="text-lg md:text-2xl font-bold text-accent">
             {analytics.totalIncome > 0
               ? ((analytics.totalExpense / analytics.totalIncome) * 100).toFixed(1)
               : '0'}
@@ -364,17 +364,17 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-8 mb-4 md:mb-8">
         {/* Income vs Expense Pie Chart */}
-        <div className="bg-secondary border border-gray-700 rounded-lg p-4 md:p-6">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <PieChart size={20} className="text-accent" />
-            <h2 className="text-lg font-semibold text-white">Income vs Expense</h2>
+            <h2 className="text-base md:text-lg font-semibold text-white truncate">Income vs Expense</h2>
           </div>
           {categoryPieData.length === 0 ? (
             <p className="text-gray-400 text-center py-8">No data available</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <RechartsPieChart>
                 <Pie
                   data={categoryPieData}
@@ -397,15 +397,15 @@ export const AnalyticsPage = () => {
         </div>
 
         {/* Trackable Analytics Pie Chart */}
-        <div className="bg-secondary border border-gray-700 rounded-lg p-6">
+        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <PieChart size={20} className="text-accent" />
-            <h2 className="text-lg font-semibold text-white">By Trackable</h2>
+            <h2 className="text-base md:text-lg font-semibold text-white truncate">By Trackable</h2>
           </div>
           {trackablePieData.length === 0 ? (
             <p className="text-gray-400 text-center py-8">No data available</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={250}>
               <RechartsPieChart>
                 <Pie
                   data={trackablePieData}
@@ -429,15 +429,15 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Bank Account Balance Over Time Line Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-6 mb-8">
+      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={20} className="text-accent" />
-          <h2 className="text-lg font-semibold text-white">Account Balances Over Time</h2>
+          <h2 className="text-base md:text-lg font-semibold text-white truncate">Account Balances Over Time</h2>
         </div>
         {accountBalanceOverTime.length === 0 || accounts.length === 0 ? (
           <p className="text-gray-400 text-center py-8">No data available</p>
         ) : (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={accountBalanceOverTime}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9CA3AF" />
@@ -462,15 +462,15 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Date Analytics Line Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-6">
+      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={20} className="text-accent" />
-          <h2 className="text-lg font-semibold text-white">Trends Over Time</h2>
+          <h2 className="text-base md:text-lg font-semibold text-white truncate">Trends Over Time</h2>
         </div>
         {dateAnalyticsData.length === 0 ? (
           <p className="text-gray-400 text-center py-8">No data available</p>
         ) : (
-          <ResponsiveContainer width="100%" height={350}>
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={dateAnalyticsData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="name" stroke="#9CA3AF" />
@@ -486,22 +486,22 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Account Balances Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-6 mt-8">
+      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Wallet size={20} className="text-accent" />
-          <h2 className="text-lg font-semibold text-white">Current Bank Balances</h2>
+          <h2 className="text-base md:text-lg font-semibold text-white truncate">Current Bank Balances</h2>
         </div>
         {accountBalancesData.length === 0 ? (
           <p className="text-gray-400 text-center py-8">No bank accounts added</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {accountBalancesData.map((account, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-primary rounded-lg border border-gray-700">
+              <div key={index} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
                 <div>
-                  <p className="text-white font-medium">{account.name}</p>
+                  <p className="text-white font-medium text-sm md:text-base truncate">{account.name}</p>
                 </div>
                 <div>
-                  <p className={`text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <p className={`text-base md:text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
                     {formatAmount(account.balance)}
                   </p>
                 </div>
