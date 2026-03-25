@@ -77,7 +77,7 @@ export const ActivityPage = () => {
       <button
         id="tour-add-activity"
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2.5 md:py-3 px-6 md:px-6 rounded-lg mb-6 transition-colors text-sm md:text-base w-fit"
+        className="flex items-center justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2.5 md:py-3 px-6 md:px-6 rounded-lg mb-6 transition-colors text-sm md:text-base w-fit"
       >
         <Plus size={18} className="md:w-5 md:h-5" />
         Add Activity
