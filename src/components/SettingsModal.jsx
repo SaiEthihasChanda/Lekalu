@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Trash2, X, Users, Lock } from 'lucide-react';
-import { deleteAllUserData, getUserGroup, getUserId } from '../fb/index.js';
+import { deleteAllUserData, getUserGroup, getUserId, initializeAuth } from '../fb/index.js';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 
@@ -23,6 +23,9 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   useEffect(() => {
     const loadGroupInfo = async () => {
       try {
+        // Ensure auth is initialized
+        await initializeAuth();
+        
         const userId = getUserId();
         setCurrentUserId(userId);
         

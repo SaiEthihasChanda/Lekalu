@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, LogOut, Trash2, Copy, X, AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal.jsx';
-import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail } from '../fb/index.js';
+import { createGroup, joinGroup, leaveGroup, deleteGroup, getUserGroup, getUserId, getUserEmail, initializeAuth } from '../fb/index.js';
 
 /**
  * Group Management Modal
@@ -26,6 +26,9 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
   useEffect(() => {
     const loadGroup = async () => {
       try {
+        // Ensure auth is initialized
+        await initializeAuth();
+        
         const userId = getUserId();
         setCurrentUserId(userId);
         const userGroup = await getUserGroup();

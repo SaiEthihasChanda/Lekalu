@@ -6,7 +6,8 @@ import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
 import { useActivities, useBankAccounts, useTrackables } from '../hooks/index.js';
 import { formatAmount } from '../utils/analytics.js';
-import { getUserGroup, getUserId, getUserEmail } from '../fb/index.js';
+import { getUserGroup, getUserEmail, initializeAuth } from '../fb/index.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,6 +15,7 @@ export const ActivityPage = () => {
   const [dateFilter, setDateFilter] = useState('daily'); // daily, monthly, todate
   const [userGroup, setUserGroup] = useState(null);
   const [memberEmails, setMemberEmails] = useState({});
+  const { user, loading: authLoading } = useAuth();
   const { accounts, loading: accountsLoading } = useBankAccounts();
   const { trackables, loading: tracksLoading } = useTrackables();
   
@@ -22,11 +24,17 @@ export const ActivityPage = () => {
     date: today.getTime(),
   });
 
-  // Load group information
+  // Load group information once auth is ready
   useEffect(() => {
     const loadGroupInfo = async () => {
+      if (authLoading || !user) {
+        console.log('Auth not ready yet, skipping group load');
+        return;
+      }
+
       try {
         const group = await getUserGroup();
+        console.log('Loaded group:', group); // Debug log
         setUserGroup(group);
 
         // Fetch member emails if in group
@@ -45,11 +53,12 @@ export const ActivityPage = () => {
         }
       } catch (err) {
         console.error('Error loading group info:', err);
+        setUserGroup(null);
       }
     };
 
     loadGroupInfo();
-  }, []);
+  }, [authLoading, user]);
 
   // Get date range based on filter
   const getDateRange = useMemo(() => {
