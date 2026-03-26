@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Trash2, Edit2 } from 'lucide-react';
+import { formatAmount } from '../utils/analytics.js';
 
 export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [name, setName] = useState(trackable?.name || '');
@@ -167,7 +168,7 @@ export const TrackableCard = ({ trackable, account, onEdit, onDelete }) => {
 
       {trackable.includeInTracker && trackable.trackerAmount != null && (
         <div className="mb-3 p-2 bg-primary/50 rounded text-sm text-gray-300">
-          Tracked Amount: ${trackable.trackerAmount.toFixed(2) || '0.00'}
+          Tracked Amount: {formatAmount(trackable.trackerAmount)}
         </div>
       )}
 

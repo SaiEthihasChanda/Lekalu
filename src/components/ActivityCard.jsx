@@ -31,28 +31,37 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
 
   return (
     <div
-      className={`${bgColor} border border-gray-700 rounded-lg p-2 md:p-4 hover:border-accent transition-all cursor-pointer`}
+      className={`${bgColor} border border-gray-700 rounded-lg p-2 hover:border-accent transition-all cursor-pointer`}
       onClick={() => hasDescription && setIsExpanded(!isExpanded)}
     >
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1.5 md:gap-0 mb-2 md:mb-3">
+      {/* Single line: trackable name, amount, time, and action buttons */}
+      <div className="flex items-center justify-between gap-2 mb-1">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xs md:text-base text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{account?.cardName || 'Unknown Account'}</p>
-          {creatorEmail && (
-            <p className="text-xs text-gray-500 mt-0.5">Created by: {creatorEmail}</p>
-          )}
+          <h3 className="text-xs text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
         </div>
-        <div className="flex items-center gap-0.5 md:gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`${textColor} text-xs font-semibold whitespace-nowrap`}>
+            {amountPrefix}
+            {formatAmount(activity.amount)}
+          </span>
+          <span className="text-xs text-gray-500">{formatDate(activity.date, 'HH:mm')}</span>
+        </div>
+      </div>
+
+      {/* Second line: account name and action buttons */}
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-xs text-gray-400 truncate flex-1">{account?.cardName || 'Unknown Account'}</p>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
           {hasDescription && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
-              className="p-1 md:p-2 hover:bg-gray-700 rounded transition-colors"
+              className="p-0.5 hover:bg-gray-700 rounded transition-colors"
               title={isExpanded ? 'Hide details' : 'Show details'}
             >
-              <ChevronDown size={14} className={`text-gray-400 transition-transform md:w-4 md:h-4 ${isExpanded ? 'rotate-180' : ''}`} />
+              <ChevronDown size={12} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
           )}
           {onEdit && (
@@ -61,10 +70,10 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
                 e.stopPropagation();
                 onEdit();
               }}
-              className="p-1 md:p-2 hover:bg-gray-700 rounded transition-colors"
+              className="p-0.5 hover:bg-gray-700 rounded transition-colors"
               title="Edit"
             >
-              <Edit2 size={14} className="text-gray-400 md:w-4 md:h-4" />
+              <Edit2 size={12} className="text-gray-400" />
             </button>
           )}
           {onDelete && (
@@ -73,26 +82,22 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
                 e.stopPropagation();
                 onDelete();
               }}
-              className="p-1 md:p-2 hover:bg-red-900/50 rounded transition-colors"
+              className="p-0.5 hover:bg-red-900/50 rounded transition-colors"
               title="Delete"
             >
-              <Trash2 size={14} className="text-red-400 md:w-4 md:h-4" />
+              <Trash2 size={12} className="text-red-400" />
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-1">
-        <span className={`${textColor} text-sm md:text-lg font-semibold`}>
-          {amountPrefix}
-          {formatAmount(activity.amount)}
-        </span>
-        <span className="text-xs text-gray-500">{formatDate(activity.date, 'HH:mm')}</span>
-      </div>
-
+      {/* Expanded details */}
       {isExpanded && hasDescription && (
-        <div className="mt-2 pt-2 md:mt-3 md:pt-3 border-t border-gray-600">
-          <p className="text-xs md:text-sm text-gray-300">{activity.description}</p>
+        <div className="mt-1 pt-1 border-t border-gray-600">
+          <p className="text-xs text-gray-300">{activity.description}</p>
+          {creatorEmail && (
+            <p className="text-xs text-gray-500 mt-1">By: {creatorEmail}</p>
+          )}
         </div>
       )}
     </div>
