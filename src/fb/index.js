@@ -347,6 +347,9 @@ export const leaveGroup = async () => {
       throw new Error('Owner cannot leave. Delete the group instead.');
     }
 
+    // First migrate user's data from group to personal before leaving
+    await _removeMemberDataFromGroupByUserId(userId, group.id);
+
     // Remove user from group members
     const updatedMembers = group.members.filter(id => id !== userId);
     await updateDoc(doc(db, 'groups', group.id), {
@@ -379,10 +382,17 @@ export const deleteGroup = async () => {
       throw new Error('Only group owner can delete the group.');
     }
 
-    // Remove all members from group
+    // Migrate each member's data from group to personal before deleting group
     for (const memberId of group.members) {
-      const userDocRef = doc(db, 'users', memberId);
-      await setDoc(userDocRef, { groupId: null }, { merge: true });
+      try {
+        await _removeMemberDataFromGroupByUserId(memberId, group.id);
+        // Clear member's group reference
+        const userDocRef = doc(db, 'users', memberId);
+        await setDoc(userDocRef, { groupId: null }, { merge: true });
+      } catch (err) {
+        console.error(`Failed to migrate data for member ${memberId}:`, err);
+        // Continue with other members even if one fails
+      }
     }
 
     // Delete the group
@@ -777,21 +787,20 @@ export const autoMergeDataToGroup = async (groupId) => {
  * Removes email suffix from names during transfer
  * @returns {Promise<Object>} Counts of removed items per collection
  */
-export const removeMemberDataFromGroup = async () => {
+/**
+ * Internal helper to remove a specific member's data from group
+ * @private
+ * @param {string} userId - Member's user ID
+ * @param {string} groupId - Group ID
+ * @returns {Promise<Object>} Migration counts
+ */
+const _removeMemberDataFromGroupByUserId = async (userId, groupId) => {
   try {
-    const userId = getUserId();
-    const userEmail = auth.currentUser?.email || userId;
-    const batch = writeBatch(db);
-    
-    // Get user's current group
+    // Get user's email
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
-    const groupId = userDoc.data()?.groupId;
-    
-    if (!groupId) {
-      throw new Error('User is not in a group');
-    }
-    
+    const userEmail = userDoc.exists() ? userDoc.data().email : userId;
+
     const personalKey = generateEncryptionKey(userId, null);
     const groupKey = generateEncryptionKey(userId, groupId);
     
@@ -802,7 +811,7 @@ export const removeMemberDataFromGroup = async () => {
       banks: 0,
     };
 
-    // Helper to re-encrypt and remove email suffix
+    // Helper to re-encrypt field
     const reencryptField = (data, fieldName, fromKey, toKey) => {
       if (!data[`_encrypted_${fieldName}`] || !data[fieldName]) return;
       try {
@@ -824,6 +833,8 @@ export const removeMemberDataFromGroup = async () => {
       }
       return name;
     };
+
+    const batch = writeBatch(db);
 
     // Process all collections for this user
     const collections = ['bankAccounts', 'trackables', 'activities', 'trackers'];
@@ -882,6 +893,28 @@ export const removeMemberDataFromGroup = async () => {
 
     await batch.commit();
     return counts;
+  } catch (error) {
+    console.error('Error removing member data from group:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove current user's data from group and migrate to personal account
+ * @returns {Promise<Object>} Migration counts
+ */
+export const removeMemberDataFromGroup = async () => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    const groupId = userDoc.data()?.groupId;
+    
+    if (!groupId) {
+      throw new Error('User is not in a group');
+    }
+
+    return await _removeMemberDataFromGroupByUserId(userId, groupId);
   } catch (error) {
     console.error('Error removing member data from group:', error);
     throw error;
