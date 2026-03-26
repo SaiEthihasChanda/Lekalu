@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Trash2, Edit2 } from 'lucide-react';
 import { formatAmount } from '../utils/analytics.js';
+import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
 
 export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [name, setName] = useState(trackable?.name || '');
@@ -8,6 +9,8 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
   const [type, setType] = useState(trackable?.type || 'expense');
   const [includeInTracker, setIncludeInTracker] = useState(trackable?.includeInTracker || false);
   const [trackerAmount, setTrackerAmount] = useState(trackable?.trackerAmount?.toString() || '');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingData, setPendingData] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,6 +41,13 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       data.accountId = accountId;
     }
 
+    // Check if amount is suspiciously large (> 99 lakhs)
+    if (includeInTracker && parseFloat(trackerAmount) > 9900000) {
+      setPendingData(data);
+      setShowConfirmModal(true);
+      return;
+    }
+
     onSubmit(data);
 
     setName('');
@@ -45,6 +55,25 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
     setType('expense');
     setIncludeInTracker(false);
     setTrackerAmount('');
+  };
+
+  const handleConfirmAmount = () => {
+    if (pendingData) {
+      onSubmit(pendingData);
+      setPendingData(null);
+      setShowConfirmModal(false);
+
+      setName('');
+      setAccountId('');
+      setType('expense');
+      setIncludeInTracker(false);
+      setTrackerAmount('');
+    }
+  };
+
+  const handleCancelAmount = () => {
+    setPendingData(null);
+    setShowConfirmModal(false);
   };
 
   return (
@@ -142,6 +171,13 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
           </button>
         )}
       </div>
+
+      <AmountConfirmationModal
+        isOpen={showConfirmModal}
+        amount={pendingData?.trackerAmount || 0}
+        onConfirm={handleConfirmAmount}
+        onCancel={handleCancelAmount}
+      />
     </form>
   );
 };

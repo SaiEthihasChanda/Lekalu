@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Trash2, Edit2 } from 'lucide-react';
+import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
 
 export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel }) => {
   const [cardName, setCardName] = useState(account?.cardName || '');
   const [accountNumber, setAccountNumber] = useState(account?.accountNumber || '');
   const [openingBalance, setOpeningBalance] = useState(account?.openingBalance?.toString() || '0');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingData, setPendingData] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -14,10 +17,36 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
       return;
     }
 
-    onSubmit({ cardName, accountNumber, openingBalance: parseFloat(openingBalance) || 0 });
+    const data = { cardName, accountNumber, openingBalance: parseFloat(openingBalance) || 0 };
+
+    // Check if amount is suspiciously large (> 99 lakhs)
+    if (parseFloat(openingBalance) > 9900000) {
+      setPendingData(data);
+      setShowConfirmModal(true);
+      return;
+    }
+
+    onSubmit(data);
     setCardName('');
     setAccountNumber('');
     setOpeningBalance('0');
+  };
+
+  const handleConfirmAmount = () => {
+    if (pendingData) {
+      onSubmit(pendingData);
+      setPendingData(null);
+      setShowConfirmModal(false);
+
+      setCardName('');
+      setAccountNumber('');
+      setOpeningBalance('0');
+    }
+  };
+
+  const handleCancelAmount = () => {
+    setPendingData(null);
+    setShowConfirmModal(false);
   };
 
   return (
@@ -74,6 +103,13 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
           </button>
         )}
       </div>
+
+      <AmountConfirmationModal
+        isOpen={showConfirmModal}
+        amount={pendingData?.openingBalance || 0}
+        onConfirm={handleConfirmAmount}
+        onCancel={handleCancelAmount}
+      />
     </form>
   );
 };

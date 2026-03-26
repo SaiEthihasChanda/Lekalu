@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
 
 export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = false }) => {
   const [amount, setAmount] = useState('');
@@ -6,6 +7,8 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
   const [trackableId, setTrackableId] = useState('');
   const [accountId, setAccountId] = useState(accounts[0]?.id || '');
   const [description, setDescription] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingData, setPendingData] = useState(null);
 
   const selectedTrackable = useMemo(() => {
     return trackables.find(t => t.id === trackableId);
@@ -37,12 +40,37 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       data.trackableId = trackableId;
     }
 
+    // Check if amount is suspiciously large (> 99 lakhs)
+    if (parseFloat(amount) > 9900000) {
+      setPendingData(data);
+      setShowConfirmModal(true);
+      return;
+    }
+
     onSubmit(data);
 
     setAmount('');
     setType('expense');
     setTrackableId('');
     setDescription('');
+  };
+
+  const handleConfirmAmount = () => {
+    if (pendingData) {
+      onSubmit(pendingData);
+      setPendingData(null);
+      setShowConfirmModal(false);
+
+      setAmount('');
+      setType('expense');
+      setTrackableId('');
+      setDescription('');
+    }
+  };
+
+  const handleCancelAmount = () => {
+    setPendingData(null);
+    setShowConfirmModal(false);
   };
 
   // Filter trackables by type (don't filter out tracked ones - user can still manually add them)
@@ -173,6 +201,13 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       >
         {isLoading ? 'Adding...' : 'Add Activity'}
       </button>
+
+      <AmountConfirmationModal
+        isOpen={showConfirmModal}
+        amount={pendingData?.amount || 0}
+        onConfirm={handleConfirmAmount}
+        onCancel={handleCancelAmount}
+      />
     </form>
   );
 };
