@@ -140,6 +140,7 @@ export const useBankAccounts = () => {
         ...encryptedData,
         userId,
         groupId: group?.id || null,
+        groupMemberId: group ? userId : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -307,6 +308,7 @@ export const useTrackables = () => {
         ...encryptedData,
         userId,
         groupId: group?.id || null,
+        groupMemberId: group ? userId : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -477,6 +479,7 @@ export const useActivities = () => {
         ...encryptedData,
         userId,
         groupId: group?.id || null,
+        groupMemberId: group ? userId : null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -644,8 +647,7 @@ export const useTrackers = () => {
       const docRef = await addDoc(collection(db, 'trackers'), {
         ...encryptedData,
         userId,
-        groupId: group?.id || null,
-        createdAt: serverTimestamp(),
+        groupId: group?.id || null,        groupMemberId: group ? userId : null,        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       return docRef.id;
