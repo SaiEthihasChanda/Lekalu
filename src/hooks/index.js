@@ -397,6 +397,10 @@ export const useActivities = () => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
                       const decrypted = decryptData(docData, encryptionKey);
+                      // Ensure date field is present and is a number
+                      if (!decrypted.date || typeof decrypted.date !== 'number') {
+                        console.warn(`Activity ${doc.id} missing or invalid date:`, decrypted.date);
+                      }
                       return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt activity ${doc.id}:`, decryptErr.message);
@@ -404,6 +408,7 @@ export const useActivities = () => {
                     }
                   })
                   .filter(doc => doc !== null); // Remove failed decryptions
+                console.log(`[useActivities] Group loaded ${groupData.length} activities for group ${group.id}`);
                 setActivities(groupData);
                 setLoading(false);
               } catch (err) {
@@ -432,13 +437,19 @@ export const useActivities = () => {
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      // Ensure date field is present and is a number
+                      if (!decrypted.date || typeof decrypted.date !== 'number') {
+                        console.warn(`Activity ${doc.id} missing or invalid date:`, decrypted.date);
+                      }
+                      return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt personal activity ${doc.id}:`, decryptErr);
                       return null;
                     }
                   })
                   .filter(doc => doc !== null); // Remove failed decryptions
+                console.log(`[useActivities] Personal loaded ${personalData.length} activities`);
                 setActivities(personalData);
                 setLoading(false);
               } catch (err) {

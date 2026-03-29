@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActivities, useTrackables, useBankAccounts } from '../hooks/index.js';
 import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
 import { TrendingUp, PieChart, Wallet } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -26,6 +27,7 @@ import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOf
  * @property {number} [endDate] - End date timestamp
  * @property {string} [accountId] - Account ID filter
  * @property {string} [trackableId] - Trackable ID filter
+ * @property {string} [userId] - User ID filter (for groups)
  */
 
 // Chart colors
@@ -40,12 +42,33 @@ export const AnalyticsPage = () => {
   const [timeRange, setTimeRange] = useState('month');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedTrackableId, setSelectedTrackableId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
   const { accounts } = useBankAccounts();
+  const { group } = useAuth();
+
+  // Get unique users in group from activities
+  const uniqueUsers = useMemo(() => {
+    if (!group) return [];
+    
+    const usersMap = new Map();
+    activities.forEach(activity => {
+      if (activity.userId && !usersMap.has(activity.userId)) {
+        // Extract email if available (email might be suffixed with " (owner)" or similar)
+        const email = activity.email ? activity.email.split(' (')[0] : activity.userId;
+        usersMap.set(activity.userId, email);
+      }
+    });
+    
+    return Array.from(usersMap.entries()).map(([userId, email]) => ({
+      userId,
+      email,
+    })).sort((a, b) => a.email.localeCompare(b.email));
+  }, [activities, group]);
 
   /** @type {AnalyticsFilter} */
   const filter = {
@@ -54,6 +77,7 @@ export const AnalyticsPage = () => {
     endDate: endDate ? new Date(endDate).getTime() : undefined,
     accountId: selectedAccountId || undefined,
     trackableId: selectedTrackableId || undefined,
+    userId: selectedUserId || undefined,
   };
 
   const trackablesMap = new Map(trackables.map(t => [t.id, t]));
@@ -263,7 +287,7 @@ export const AnalyticsPage = () => {
       <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8\">
         <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4\">Filters</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4\">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4\">
           <div>
             <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
             <select
@@ -300,6 +324,24 @@ export const AnalyticsPage = () => {
                 />
               </div>
             </>
+          )}
+
+          {group && uniqueUsers.length > 0 && (
+            <div>
+              <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">User</label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+              >
+                <option value="">All Users</option>
+                {uniqueUsers.map(user => (
+                  <option key={user.userId} value={user.userId}>
+                    {user.email}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           <div>

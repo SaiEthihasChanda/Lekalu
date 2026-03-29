@@ -68,11 +68,19 @@ export const ActivityPage = () => {
 
   // Sort and filter activities by date range
   const sortedActivities = useMemo(() => {
-    return [...activities]
+    const filtered = [...activities]
       .filter(a => a && a.date != null && typeof a.date === 'number')
       .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end)
       .sort((a, b) => (b.date || 0) - (a.date || 0));
-  }, [activities, getDateRange]);
+    
+    console.log(`[ActivityPage] dateFilter=${dateFilter}, range=[${new Date(getDateRange.start).toLocaleString()} - ${new Date(getDateRange.end).toLocaleString()}]`);
+    console.log(`[ActivityPage] Total activities: ${activities.length}, Filtered: ${filtered.length}`);
+    if (filtered.length === 0 && activities.length > 0) {
+      console.warn('[ActivityPage] No activities match filter. Activities:', activities.slice(0, 3).map(a => ({ id: a.id, date: new Date(a.date).toLocaleString(), type: a.type })));
+    }
+    
+    return filtered;
+  }, [activities, getDateRange, dateFilter]);
 
   const todayStats = useMemo(() => {
     const filteredActivities = sortedActivities.filter(a => a.type !== 'transfer');

@@ -44,8 +44,9 @@ export const calculateAnalytics = (activities, trackablesMap, filter) => {
     const inDateRange = activity.date >= start && activity.date <= end;
     const matchAccount = !filter.accountId || activity.accountId === filter.accountId;
     const matchTrackable = !filter.trackableId || activity.trackableId === filter.trackableId;
+    const matchUser = !filter.userId || activity.userId === filter.userId;
     
-    return inDateRange && matchAccount && matchTrackable && activity.type !== 'transfer';
+    return inDateRange && matchAccount && matchTrackable && matchUser && activity.type !== 'transfer';
   });
 
   const byCategory = {};
