@@ -63,54 +63,46 @@ export const TrackerPage = () => {
       if (existingTracker.isDone) {
         // Mark as incomplete - delete associated activity
         const associatedActivity = activities.find(
-          a => a.trackableId === trackableId && a.date >= (existingTracker.completedAt - 86400000) // Within 1 day of completion
+          a => a.trackableId === trackableId && a.completedAt && a.completedAt >= (existingTracker.completedAt - 86400000) // Within 1 day of completion
         );
         if (associatedActivity) {
           await deleteActivity(associatedActivity.id);
         }
-        await updateTracker(existingTracker.id, { isDone: false, completedAt: null });
+        await updateTracker(existingTracker.id, { isDone: false });
       } else {
-        // Mark as complete and create activity
+        // Mark as complete and create activity (use server timestamp)
+        // User will choose account when adding activity manually if needed
         const newActivity = {
           amount: trackable.trackerAmount || 0,
           type: trackable.type,
           trackableId: trackableId,
           description: trackable.name,
-          date: new Date().getTime(),
+          // date is automatically set to serverTimestamp() in addActivity
         };
-        
-        // Only include accountId if it has a value
-        if (trackable.accountId) {
-          newActivity.accountId = trackable.accountId;
-        }
 
         await addActivity(newActivity);
-        await updateTracker(existingTracker.id, { isDone: true, completedAt: new Date().getTime() });
+        await updateTracker(existingTracker.id, { isDone: true });
       }
     } else {
-      // Create new tracker and activity
+      // Create new tracker and activity (use server timestamp)
       const newTracker = {
         trackableId: trackableId,
         month: month,
         year: year,
         isDone: true,
-        completedAt: new Date().getTime(),
+        // completedAt is automatically set to serverTimestamp() in addTracker when isDone is true
       };
       const trackerId = await addTracker(newTracker);
 
       // Create corresponding activity
+      // User will choose account when adding activity manually if needed
       const newActivity = {
         amount: trackable.trackerAmount || 0,
         type: trackable.type,
         trackableId: trackableId,
         description: trackable.name,
-        date: new Date().getTime(),
+        // date is automatically set to serverTimestamp() in addActivity
       };
-      
-      // Only include accountId if it has a value
-      if (trackable.accountId) {
-        newActivity.accountId = trackable.accountId;
-      }
 
       await addActivity(newActivity);
     }
@@ -189,7 +181,6 @@ export const TrackerPage = () => {
           trackablesForThisMonth.map(trackable => {
             const tracker = trackersMap.get(trackable.id);
             const isDone = tracker?.isDone || false;
-            const account = accountsMap.get(trackable.accountId);
 
             return (
               <div
@@ -212,9 +203,6 @@ export const TrackerPage = () => {
                     <p className={`font-medium ${isDone ? 'text-gray-400 line-through' : 'text-white'}`}>
                       {trackable.name}
                     </p>
-                    {account && (
-                      <p className="text-sm text-gray-400">{account.cardName}</p>
-                    )}
                     {creatorEmails[trackable.id] && (
                       <p className="text-xs text-gray-500">Created by: {creatorEmails[trackable.id]}</p>
                     )}

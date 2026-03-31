@@ -5,7 +5,6 @@ import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
 
 export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [name, setName] = useState(trackable?.name || '');
-  const [accountId, setAccountId] = useState(trackable?.accountId || '');
   const [type, setType] = useState(trackable?.type || 'expense');
   const [includeInTracker, setIncludeInTracker] = useState(trackable?.includeInTracker || false);
   const [trackerAmount, setTrackerAmount] = useState(trackable?.trackerAmount?.toString() || '');
@@ -36,11 +35,6 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       data.trackerAmount = parseFloat(trackerAmount);
     }
 
-    // Only include accountId if selected
-    if (accountId) {
-      data.accountId = accountId;
-    }
-
     // Check if amount is suspiciously large (> 99 lakhs)
     if (includeInTracker && parseFloat(trackerAmount) > 9900000) {
       setPendingData(data);
@@ -64,7 +58,6 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       setShowConfirmModal(false);
 
       setName('');
-      setAccountId('');
       setType('expense');
       setIncludeInTracker(false);
       setTrackerAmount('');
@@ -87,22 +80,6 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-accent"
           placeholder="e.g., Netflix Subscription"
         />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Account</label>
-        <select
-          value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
-        >
-          <option value="">Select an account (optional)</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
-              {acc.cardName} ({acc.accountNumber})
-            </option>
-          ))}
-        </select>
       </div>
 
       <div>
@@ -195,7 +172,6 @@ export const TrackableCard = ({ trackable, account, onEdit, onDelete }) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-white font-medium">{trackable.name}</h3>
-          {account && account.cardName && <p className="text-xs text-gray-400 mt-1">{account.cardName}</p>}
         </div>
         <span className={`text-sm font-medium ${typeColor}`}>
           {trackable.type.charAt(0).toUpperCase() + trackable.type.slice(1)}

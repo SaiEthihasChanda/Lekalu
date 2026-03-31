@@ -114,7 +114,6 @@ export const TrackablesPage = () => {
                 <TrackableCard
                   key={trackable.id}
                   trackable={trackable}
-                  account={accountsMap.has(trackable.accountId) ? accountsMap.get(trackable.accountId) : undefined}
                   onEdit={() => handleEditTrackable(trackable.id)}
                   onDelete={() => deleteTrackable(trackable.id)}
                 />

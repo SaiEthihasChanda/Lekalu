@@ -18,10 +18,8 @@ export const ActivityPage = () => {
   const { accounts, loading: accountsLoading } = useBankAccounts();
   const { trackables, loading: tracksLoading } = useTrackables();
   
-  const today = new Date();
-  const { activities, addActivity } = useActivities({
-    date: today.getTime(),
-  });
+  // Use server timestamps for consistent date handling across devices
+  const { activities, addActivity } = useActivities();
 
   // Fetch member emails when group changes
   useEffect(() => {

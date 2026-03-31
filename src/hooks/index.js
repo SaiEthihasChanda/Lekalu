@@ -397,10 +397,17 @@ export const useActivities = () => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
                       const decrypted = decryptData(docData, encryptionKey);
-                      // Ensure date field is present and is a number
+                      
+                      // Convert Firestore Timestamp to milliseconds if needed
+                      if (decrypted.date && typeof decrypted.date === 'object' && decrypted.date.toMillis) {
+                        decrypted.date = decrypted.date.toMillis();
+                      }
+                      
+                      // Ensure date field is a number
                       if (!decrypted.date || typeof decrypted.date !== 'number') {
                         console.warn(`Activity ${doc.id} missing or invalid date:`, decrypted.date);
                       }
+                      
                       return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt activity ${doc.id}:`, decryptErr.message);
@@ -438,10 +445,17 @@ export const useActivities = () => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
                       const decrypted = decryptData(docData, encryptionKey);
-                      // Ensure date field is present and is a number
+                      
+                      // Convert Firestore Timestamp to milliseconds if needed
+                      if (decrypted.date && typeof decrypted.date === 'object' && decrypted.date.toMillis) {
+                        decrypted.date = decrypted.date.toMillis();
+                      }
+                      
+                      // Ensure date field is a number
                       if (!decrypted.date || typeof decrypted.date !== 'number') {
                         console.warn(`Activity ${doc.id} missing or invalid date:`, decrypted.date);
                       }
+                      
                       return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt personal activity ${doc.id}:`, decryptErr);
@@ -484,10 +498,16 @@ export const useActivities = () => {
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
       
-      const encryptedData = encryptData(data, encryptionKey);
+      // Ensure date is set to server timestamp (not client date)
+      // If date is provided, remove it - always use server timestamp for consistency across devices
+      const dataWithoutDate = { ...data };
+      delete dataWithoutDate.date;
+      
+      const encryptedData = encryptData(dataWithoutDate, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'activities'), {
         ...encryptedData,
+        date: serverTimestamp(), // Always use server timestamp for activity date
         userId,
         groupId: group?.id || null,
         groupMemberId: group ? userId : null,
@@ -578,7 +598,14 @@ export const useTrackers = () => {
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      
+                      // Convert Firestore Timestamps to milliseconds if needed
+                      if (decrypted.completedAt && typeof decrypted.completedAt === 'object' && decrypted.completedAt.toMillis) {
+                        decrypted.completedAt = decrypted.completedAt.toMillis();
+                      }
+                      
+                      return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt tracker ${doc.id}:`, decryptErr);
                       return null;
@@ -613,7 +640,14 @@ export const useTrackers = () => {
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      
+                      // Convert Firestore Timestamps to milliseconds if needed
+                      if (decrypted.completedAt && typeof decrypted.completedAt === 'object' && decrypted.completedAt.toMillis) {
+                        decrypted.completedAt = decrypted.completedAt.toMillis();
+                      }
+                      
+                      return decrypted;
                     } catch (decryptErr) {
                       console.error(`Failed to decrypt personal tracker ${doc.id}:`, decryptErr);
                       return null;
@@ -653,12 +687,20 @@ export const useTrackers = () => {
       const userId = getUserId();
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
-      const encryptedData = encryptData(data, encryptionKey);
+      
+      // Remove client-side completedAt if provided - use server timestamp instead
+      const dataWithoutTimestamps = { ...data };
+      delete dataWithoutTimestamps.completedAt;
+      
+      const encryptedData = encryptData(dataWithoutTimestamps, encryptionKey);
       
       const docRef = await addDoc(collection(db, 'trackers'), {
         ...encryptedData,
+        completedAt: data.isDone ? serverTimestamp() : null, // Set server timestamp if marked done
         userId,
-        groupId: group?.id || null,        groupMemberId: group ? userId : null,        createdAt: serverTimestamp(),
+        groupId: group?.id || null,
+        groupMemberId: group ? userId : null,
+        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       return docRef.id;
@@ -673,13 +715,28 @@ export const useTrackers = () => {
       const userId = getUserId();
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
-      const encryptedData = encryptData(data, encryptionKey);
       
-      const docRef = doc(db, 'trackers', id);
-      await updateDoc(docRef, {
+      // Remove client-side completedAt if provided - use server timestamp instead
+      const dataWithoutTimestamps = { ...data };
+      delete dataWithoutTimestamps.completedAt;
+      
+      const encryptedData = encryptData(dataWithoutTimestamps, encryptionKey);
+      
+      const updateData = {
         ...encryptedData,
         updatedAt: serverTimestamp(),
-      });
+      };
+      
+      // If isDone is being set to true, update completedAt with server timestamp
+      if (data.isDone === true) {
+        updateData.completedAt = serverTimestamp();
+      } else if (data.isDone === false) {
+        // If marked as not done, clear completedAt
+        updateData.completedAt = null;
+      }
+      
+      const docRef = doc(db, 'trackers', id);
+      await updateDoc(docRef, updateData);
     } catch (err) {
       console.error('Error updating tracker:', err);
       throw err;
