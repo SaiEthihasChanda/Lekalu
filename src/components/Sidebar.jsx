@@ -1,12 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, CheckSquare, Settings, Activity, LogOut, Menu, X, HelpCircle, Sliders, User } from 'lucide-react';
+import { BarChart3, CheckSquare, Settings, Activity, LogOut, HelpCircle, Sliders, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useOnboarding } from '../contexts/OnboardingContext.jsx';
 import { logoutUser } from '../fb/index.js';
 import { SettingsModal } from './SettingsModal.jsx';
 
-export const Sidebar = ({ isOpen, onClose, onToggle }) => {
+export const Sidebar = ({ isOpen, onClose, onToggle, withTopBar }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -40,14 +40,6 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={onToggle}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 hover:bg-gray-700 rounded-lg"
-      >
-        {isOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
-      </button>
-
       {/* Overlay for mobile */}
       {isOpen && (
         <div
@@ -62,9 +54,10 @@ export const Sidebar = ({ isOpen, onClose, onToggle }) => {
         className={`
         fixed md:sticky top-0 left-0 h-screen w-64 bg-secondary border-r border-gray-700 
         flex flex-col z-40 transition-transform duration-300 transform
+        ${withTopBar ? 'pt-16 md:pt-0' : 'pt-0'}
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-        <div className="p-4 md:p-6 pt-16 md:pt-6">
+        <div className="p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
             <img src="/lekalu-logo.svg" alt="Lekalu" className="w-10 h-10" />
             <h1 className="text-xl md:text-2xl font-bold text-white">Lekalu</h1>

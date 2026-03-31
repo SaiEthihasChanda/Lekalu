@@ -4,6 +4,7 @@ import { startOfDay, startOfMonth, startOfYear, endOfDay, endOfMonth, endOfYear 
 import { Modal } from '../components/Modal.jsx';
 import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
+import { EditActivityForm } from '../components/EditActivityForm.jsx';
 import { useActivities, useBankAccounts, useTrackables } from '../hooks/index.js';
 import { formatAmount } from '../utils/analytics.js';
 import { getUserEmail } from '../fb/index.js';
@@ -12,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingActivityId, setEditingActivityId] = useState(null);
   const [dateFilter, setDateFilter] = useState('daily'); // daily, monthly, todate
   const [memberEmails, setMemberEmails] = useState({});
   const { user, loading: authLoading, group } = useAuth();
@@ -19,7 +22,7 @@ export const ActivityPage = () => {
   const { trackables, loading: tracksLoading } = useTrackables();
   
   // Use server timestamps for consistent date handling across devices
-  const { activities, addActivity } = useActivities();
+  const { activities, addActivity, updateActivity, deleteActivity } = useActivities();
 
   // Get today's date for date range calculations
   const today = new Date();
@@ -105,6 +108,30 @@ export const ActivityPage = () => {
       date: Date.now(),
     });
     setIsModalOpen(false);
+  };
+
+  const handleEditActivity = (activityId) => {
+    setEditingActivityId(activityId);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditActivity = async (data) => {
+    if (editingActivityId) {
+      await updateActivity(editingActivityId, data);
+      setIsEditModalOpen(false);
+      setEditingActivityId(null);
+    }
+  };
+
+  const handleDeleteActivity = async (activityId) => {
+    if (confirm('Are you sure you want to delete this activity?')) {
+      await deleteActivity(activityId);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditModalOpen(false);
+    setEditingActivityId(null);
   };
 
   const trackablesMap = new Map(trackables.map(t => [t.id, t]));
@@ -219,12 +246,33 @@ export const ActivityPage = () => {
               activity={activity}
               trackable={activity.trackableId ? trackablesMap.get(activity.trackableId) : undefined}
               account={accountsMap.get(activity.accountId)}
+              onEdit={() => handleEditActivity(activity.id)}
+              onDelete={() => handleDeleteActivity(activity.id)}
             />
           ))
         )}
       </div>
 
-      {/* Modal */}
+      {/* Add Activity Edit Activity Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCancelEdit}
+      >
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-6">Edit Activity</h2>
+          {editingActivityId && (
+            <EditActivityForm
+              activity={sortedActivities.find(a => a.id === editingActivityId)}
+              trackables={trackables}
+              accounts={accounts}
+              onSubmit={handleSaveEditActivity}
+              onCancel={handleCancelEdit}
+            />
+          )}
+        </div>
+      </Modal>
+
+      {/* Group Details Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
+import { MobileTopBar } from './components/MobileTopBar.jsx';
 import { Tour } from './components/Tour.jsx';
-import { DateTimeDisplay } from './components/DateTimeDisplay.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
@@ -59,9 +59,9 @@ function AppContent() {
     return (
       <>
         <Tour />
-        <DateTimeDisplay />
+        <MobileTopBar isMenuOpen={sidebarOpen} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <div className="flex flex-col md:flex-row h-screen bg-primary">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} withTopBar={true} />
           <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
             <Routes>
               <Route path="/" element={<ActivityPage />} />
