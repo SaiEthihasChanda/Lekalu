@@ -12,8 +12,8 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!cardName || !accountNumber) {
-      alert('Please fill in all fields');
+    if (!cardName) {
+      alert('Please fill in Card Name');
       return;
     }
 
@@ -63,13 +63,13 @@ export const BankAccountForm = ({ account, onSubmit, isLoading = false, onCancel
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">Account Number *</label>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Account Number</label>
         <input
           type="text"
           value={accountNumber}
           onChange={(e) => setAccountNumber(e.target.value)}
           className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-accent"
-          placeholder="e.g., ****1234"
+          placeholder="e.g., ****1234 (optional)"
         />
       </div>
 
@@ -119,7 +119,7 @@ export const BankAccountCard = ({ account, onEdit, onDelete, balance }) => {
     <div className="bg-secondary border border-gray-700 rounded-lg p-4 flex items-center justify-between hover:border-accent transition-colors">
       <div>
         <h3 className="text-white font-medium">{account.cardName}</h3>
-        <p className="text-sm text-gray-400 mt-1">{account.accountNumber}</p>
+        {account.accountNumber && <p className="text-sm text-gray-400 mt-1">{account.accountNumber}</p>}
         {balance !== undefined && (
           <p className="text-sm text-gray-300 mt-2">Balance: <span className={balance >= 0 ? 'text-green-400' : 'text-red-400'}>{balance}</span></p>
         )}

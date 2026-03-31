@@ -45,7 +45,6 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
     onSubmit(data);
 
     setName('');
-    setAccountId('');
     setType('expense');
     setIncludeInTracker(false);
     setTrackerAmount('');

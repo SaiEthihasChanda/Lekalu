@@ -21,6 +21,9 @@ export const ActivityPage = () => {
   // Use server timestamps for consistent date handling across devices
   const { activities, addActivity } = useActivities();
 
+  // Get today's date for date range calculations
+  const today = new Date();
+
   // Fetch member emails when group changes
   useEffect(() => {
     const loadMemberEmails = async () => {
