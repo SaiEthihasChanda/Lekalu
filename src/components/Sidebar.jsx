@@ -59,7 +59,7 @@ export const Sidebar = ({ isOpen, onClose, onToggle, withTopBar }) => {
       `}>
         <div className="p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
-            <img src="/lekalu-logo.svg" alt="Lekalu" className="w-10 h-10" />
+            <img src="/lekalu-logo-new.png" alt="Lekalu" className="w-10 h-10" />
             <h1 className="text-xl md:text-2xl font-bold text-white">Lekalu</h1>
           </div>
           <p className="text-xs text-gray-400">Personal Finance, Simplified</p>

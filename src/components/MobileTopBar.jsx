@@ -34,7 +34,7 @@ export const MobileTopBar = ({ isMenuOpen, onMenuToggle }) => {
 
       {/* Logo - Center */}
       <div className="flex items-center gap-2">
-        <img src="/lekalu-logo.svg" alt="Lekalu" className="w-8 h-8" />
+        <img src="/lekalu-logo-new.png" alt="Lekalu" className="w-8 h-8" />
         <span className="text-sm font-bold text-white">Lekalu</span>
       </div>
 

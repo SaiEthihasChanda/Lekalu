@@ -6,7 +6,16 @@ import { getUserEmail } from '../fb/index.js';
 export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [creatorEmail, setCreatorEmail] = useState(null);
-  
+
+  useEffect(() => {
+    // Fetch creator email if activity is from a group (has groupId)
+    if (activity?.groupId && activity?.userId) {
+      getUserEmail(activity.userId)
+        .then(email => setCreatorEmail(email))
+        .catch(err => console.error('Error fetching creator email:', err));
+    }
+  }, [activity?.groupId, activity?.userId]);
+
   // Validate activity data - if critical fields are missing/null, don't render
   if (!activity || !activity.type || activity.amount == null) {
     return null;
@@ -14,15 +23,6 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
   
   const isIncome = activity.type === 'income';
   const isTransfer = activity.type === 'transfer';
-
-  useEffect(() => {
-    // Fetch creator email if activity is from a group (has groupId)
-    if (activity.groupId && activity.userId) {
-      getUserEmail(activity.userId)
-        .then(email => setCreatorEmail(email))
-        .catch(err => console.error('Error fetching creator email:', err));
-    }
-  }, [activity.groupId, activity.userId]);
 
   const bgColor = isTransfer ? 'bg-gray-700/50' : isIncome ? 'bg-green-900/20' : 'bg-red-900/20';
   const textColor = isTransfer ? 'text-gray-300' : isIncome ? 'text-green-400' : 'text-red-400';
@@ -76,7 +76,7 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
               <Edit2 size={12} className="text-gray-400" />
             </button>
           )}
-          {onDelete && (
+          {onDelete && !activity.trackableId && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

@@ -167,7 +167,7 @@ export const useBankAccounts = () => {
       console.error('Error updating account:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const deleteAccount = useCallback(async (id) => {
     try {
@@ -335,10 +335,31 @@ export const useTrackables = () => {
       console.error('Error updating trackable:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const deleteTrackable = useCallback(async (id) => {
     try {
+      // Delete all activities linked to this trackable
+      const activitiesQuery = query(
+        collection(db, 'activities'),
+        where('trackableId', '==', id)
+      );
+      const activitiesSnapshot = await getDocs(activitiesQuery);
+      for (const docSnapshot of activitiesSnapshot.docs) {
+        await deleteDoc(doc(db, 'activities', docSnapshot.id));
+      }
+      
+      // Delete all trackers linked to this trackable
+      const trackersQuery = query(
+        collection(db, 'trackers'),
+        where('trackableId', '==', id)
+      );
+      const trackersSnapshot = await getDocs(trackersQuery);
+      for (const docSnapshot of trackersSnapshot.docs) {
+        await deleteDoc(doc(db, 'trackers', docSnapshot.id));
+      }
+      
+      // Finally delete the trackable itself
       await deleteDoc(doc(db, 'trackables', id));
     } catch (err) {
       console.error('Error deleting trackable:', err);
@@ -538,7 +559,7 @@ export const useActivities = () => {
       console.error('Error updating activity:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const deleteActivity = useCallback(async (id) => {
     try {

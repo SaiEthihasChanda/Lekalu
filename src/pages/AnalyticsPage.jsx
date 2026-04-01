@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useActivities, useTrackables, useBankAccounts } from '../hooks/index.js';
 import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
 import { TrendingUp, PieChart, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { getUserEmail } from '../fb/index.js';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -45,29 +46,44 @@ export const AnalyticsPage = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [uniqueUsers, setUniqueUsers] = useState([]);
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
   const { accounts } = useBankAccounts();
   const { group } = useAuth();
 
-  // Get unique users in group from activities
-  const uniqueUsers = useMemo(() => {
-    if (!group) return [];
+  // Get unique users in group from activities and fetch their emails
+  useEffect(() => {
+    if (!group || !activities.length) {
+      setUniqueUsers([]);
+      return;
+    }
     
-    const usersMap = new Map();
-    activities.forEach(activity => {
-      if (activity.userId && !usersMap.has(activity.userId)) {
-        // Extract email if available (email might be suffixed with " (owner)" or similar)
-        const email = activity.email ? activity.email.split(' (')[0] : activity.userId;
-        usersMap.set(activity.userId, email);
+    const fetchUserEmails = async () => {
+      const usersMap = new Map();
+      
+      // Collect all unique user IDs from activities
+      activities.forEach(activity => {
+        if (activity.userId && !usersMap.has(activity.userId)) {
+          usersMap.set(activity.userId, null); // placeholder
+        }
+      });
+      
+      // Fetch emails for each user
+      const usersList = [];
+      for (const [userId] of usersMap) {
+        const email = await getUserEmail(userId);
+        usersList.push({
+          userId,
+          email: email || userId,
+        });
       }
-    });
+      
+      setUniqueUsers(usersList.sort((a, b) => a.email.localeCompare(b.email)));
+    };
     
-    return Array.from(usersMap.entries()).map(([userId, email]) => ({
-      userId,
-      email,
-    })).sort((a, b) => a.email.localeCompare(b.email));
+    fetchUserEmails();
   }, [activities, group]);
 
   /** @type {AnalyticsFilter} */

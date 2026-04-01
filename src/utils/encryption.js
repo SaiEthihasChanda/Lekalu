@@ -89,11 +89,7 @@ export const decryptData = (data, encryptionKey) => {
             // Parse JSON value
             decrypted[fieldName] = JSON.parse(decryptedString);
           } catch (err) {
-            console.error(
-              `Failed to decrypt field '${fieldName}' in document '${data.id}'`,
-              'This usually means the encryption key is incorrect or the data was corrupted.',
-              err
-            );
+            // Silently fail: set corrupted field to null
             decrypted[fieldName] = null;
           }
         }
