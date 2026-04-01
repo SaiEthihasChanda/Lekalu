@@ -107,10 +107,15 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
           id="includeInTracker"
           checked={includeInTracker}
           onChange={(e) => setIncludeInTracker(e.target.checked)}
-          className="w-4 h-4 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+          disabled={!!trackable}
+          className={`w-4 h-4 bg-gray-700 border border-gray-600 rounded ${
+            trackable ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+          }`}
         />
-        <label htmlFor="includeInTracker" className="text-sm font-medium text-gray-300">
-          Include in Tracker
+        <label htmlFor="includeInTracker" className={`text-sm font-medium ${
+          trackable ? 'text-gray-500' : 'text-gray-300'
+        }`}>
+          Include in Tracker {trackable && '(cannot change)'}
         </label>
       </div>
 
