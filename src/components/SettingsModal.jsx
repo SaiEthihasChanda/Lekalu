@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, AlertTriangle, Trash2, X, Users, Lock } from 'lucide-react';
+import { Settings, AlertTriangle, Trash2, X, Users, Lock, Fingerprint } from 'lucide-react';
 import { deleteAllUserData, getUserId, initializeAuth } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
+import { BiometricSettings } from './BiometricAuth.jsx';
 
 /**
  * Settings Modal Component
@@ -84,6 +85,11 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               Manage Group
             </button>
           </div>
+
+          {/* Biometric Settings Section (Mobile Only) */}
+          {navigator?.maxTouchPoints > 0 && (
+            <BiometricSettings />
+          )}
 
           {/* Clear Data Section */}
           <div className="bg-primary border border-red-500/30 rounded-lg p-4">

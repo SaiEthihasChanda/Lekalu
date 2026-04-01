@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
 import { registerUser, signInWithGoogle } from '../fb/index.js';
+import { BiometricLoginButton } from '../components/BiometricAuth.jsx';
+import { PostLoginBiometricVerification } from '../components/PostLoginBiometricVerification.jsx';
+import { isMobileDevice } from '../utils/webauthn.js';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -10,6 +13,7 @@ export const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showBiometricVerification, setShowBiometricVerification] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -33,8 +37,12 @@ export const RegisterPage = () => {
       }
 
       await registerUser(email, password);
-      // Navigate to login after successful registration
-      navigate('/login', { state: { message: 'Registration successful! Please login.' } });
+      // On mobile: require biometric verification before entering app
+      if (isMobileDevice()) {
+        setShowBiometricVerification(true);
+      } else {
+        navigate('/login', { state: { message: 'Registration successful! Please login.' } });
+      }
     } catch (err) {
       const errorMessage = err.code === 'auth/email-already-in-use'
         ? 'Email already registered. Please login instead.'
@@ -55,7 +63,12 @@ export const RegisterPage = () => {
 
     try {
       await signInWithGoogle();
-      navigate('/');
+      // On mobile: require biometric verification before entering app
+      if (isMobileDevice()) {
+        setShowBiometricVerification(true);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const errorMessage = err.code === 'auth/popup-closed-by-user'
         ? 'Sign-in cancelled.'
@@ -67,6 +80,15 @@ export const RegisterPage = () => {
       setLoading(false);
     }
   };
+
+  // Show biometric verification modal if needed
+  if (showBiometricVerification) {
+    return (
+      <PostLoginBiometricVerification 
+        onVerificationSuccess={() => navigate('/')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center p-4">

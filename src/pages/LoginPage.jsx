@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
-import { loginUser, signInWithGoogle } from '../fb/index.js';
+import { Mail, Lock, AlertCircle, LogIn, Fingerprint } from 'lucide-react';
+import { loginUser, signInWithGoogle, getUserId } from '../fb/index.js';
+import { BiometricLoginButton } from '../components/BiometricAuth.jsx';
+import { PostLoginBiometricVerification } from '../components/PostLoginBiometricVerification.jsx';
+import { isMobileDevice } from '../utils/webauthn.js';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -9,6 +12,7 @@ export const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showBiometricVerification, setShowBiometricVerification] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -22,7 +26,12 @@ export const LoginPage = () => {
       }
 
       await loginUser(email, password);
-      navigate('/');
+      // On mobile: require biometric verification before entering app
+      if (isMobileDevice()) {
+        setShowBiometricVerification(true);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const errorMessage = err.code === 'auth/user-not-found'
         ? 'User not found. Please register first.'
@@ -43,7 +52,12 @@ export const LoginPage = () => {
 
     try {
       await signInWithGoogle();
-      navigate('/');
+      // On mobile: require biometric verification before entering app
+      if (isMobileDevice()) {
+        setShowBiometricVerification(true);
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const errorMessage = err.code === 'auth/popup-closed-by-user'
         ? 'Sign-in cancelled.'
@@ -55,6 +69,20 @@ export const LoginPage = () => {
       setLoading(false);
     }
   };
+
+  const handleGoogleMFASkip = () => {
+    setShowGoogleMFA(false);
+    navigate('/');
+  };
+
+  // Show biometric verification modal if needed
+  if (showBiometricVerification) {
+    return (
+      <PostLoginBiometricVerification 
+        onVerificationSuccess={() => navigate('/')}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-primary flex items-center justify-center p-4">
@@ -126,6 +154,9 @@ export const LoginPage = () => {
             </button>
           </form>
 
+          {/* Biometric Login Button */}
+          {isMobileDevice() && <BiometricLoginButton onBiometricLogin={() => navigate('/')} />}
+
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 border-t border-gray-600"></div>
@@ -160,6 +191,7 @@ export const LoginPage = () => {
           Your expense data is safely stored in the cloud
         </p>
       </div>
+
     </div>
   );
 };

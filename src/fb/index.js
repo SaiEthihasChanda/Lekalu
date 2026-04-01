@@ -920,3 +920,247 @@ export const removeMemberDataFromGroup = async () => {
     throw error;
   }
 };
+/**
+ * Register a biometric credential (fingerprint/Face ID) for the user
+ * Stores credential metadata in Firestore for later authentication
+ * @param {string} credentialData - Raw credential data from WebAuthn registration
+ * @param {string} deviceName - Optional device name to identify the credential
+ * @returns {Promise<Object>} Stored credential with metadata
+ */
+export const registerBiometricCredential = async (credentialData, deviceName = null) => {
+  try {
+    const userId = getUserId();
+    const serializedCredential = {
+      id: credentialData.id,
+      rawId: Array.from(new Uint8Array(credentialData.rawId)),
+      type: credentialData.type,
+      response: {
+        attestationObject: Array.from(new Uint8Array(credentialData.response.attestationObject)),
+        clientDataJSON: Array.from(new Uint8Array(credentialData.response.clientDataJSON)),
+      },
+      registeredAt: serverTimestamp(),
+      deviceName: deviceName || `Device`,
+      verified: true,
+    };
+
+    // Store credential in user's biometric credentials subcollection
+    const credentialsRef = collection(db, 'users', userId, 'biometricCredentials');
+    const docRef = await addDoc(credentialsRef, serializedCredential);
+
+    return {
+      id: docRef.id,
+      ...serializedCredential,
+    };
+  } catch (error) {
+    console.error('Error registering biometric credential:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all registered biometric credentials for the user
+ * @returns {Promise<Array>} List of registered credentials
+ */
+export const getBiometricCredentials = async () => {
+  try {
+    const userId = getUserId();
+    const credentialsRef = collection(db, 'users', userId, 'biometricCredentials');
+    const snapshot = await getDocs(credentialsRef);
+
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error('Error getting biometric credentials:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete a biometric credential
+ * @param {string} credentialId - ID of the credential to delete
+ * @returns {Promise<void>}
+ */
+export const deleteBiometricCredential = async (credentialId) => {
+  try {
+    const userId = getUserId();
+    const credentialDocRef = doc(db, 'users', userId, 'biometricCredentials', credentialId);
+    await deleteDoc(credentialDocRef);
+  } catch (error) {
+    console.error('Error deleting biometric credential:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if user has any registered biometric credentials
+ * @returns {Promise<boolean>}
+ */
+export const hasBiometricCredentials = async () => {
+  try {
+    const credentials = await getBiometricCredentials();
+    return credentials.length > 0;
+  } catch (error) {
+    console.error('Error checking biometric credentials:', error);
+    return false;
+  }
+};
+
+/**
+ * Store biometric authentication attempt in user preferences
+ * @param {boolean} rememberDevice - Whether to remember this device for biometric auth
+ * @returns {Promise<void>}
+ */
+export const setBiometricPreference = async (rememberDevice = true) => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+      biometricEnabled: rememberDevice,
+      lastBiometricUsed: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error setting biometric preference:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get user's biometric preferences
+ * @returns {Promise<Object>} User biometric settings
+ */
+export const getBiometricPreference = async () => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      return {
+        biometricEnabled: userDoc.data().biometricEnabled || false,
+        lastBiometricUsed: userDoc.data().lastBiometricUsed || null,
+      };
+    }
+
+    return {
+      biometricEnabled: false,
+      lastBiometricUsed: null,
+    };
+  } catch (error) {
+    console.error('Error getting biometric preference:', error);
+    return {
+      biometricEnabled: false,
+      lastBiometricUsed: null,
+    };
+  }
+};
+
+/**
+ * Register Google MFA biometric credential
+ * @param {string} credentialId - Biometric credential ID
+ * @param {Object} credentialPublicKey - Public key object
+ * @returns {Promise<void>}
+ */
+export const registerGoogleMFABiometric = async (credentialId, credentialPublicKey) => {
+  try {
+    const userId = getUserId();
+    const credentialDocRef = doc(db, 'users', userId, 'googleMFACredentials', credentialId);
+    await setDoc(credentialDocRef, {
+      credentialId,
+      publicKey: JSON.stringify(credentialPublicKey),
+      createdAt: serverTimestamp(),
+      enabled: true,
+      authMethod: 'google',
+    });
+  } catch (error) {
+    console.error('Error registering Google MFA biometric:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get user's Google MFA biometric credentials
+ * @returns {Promise<Array>}
+ */
+export const getGoogleMFACredentials = async () => {
+  try {
+    const userId = getUserId();
+    const credentialsRef = collection(db, 'users', userId, 'googleMFACredentials');
+    const q = query(credentialsRef, where('enabled', '==', true));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      publicKey: JSON.parse(doc.data().publicKey),
+    }));
+  } catch (error) {
+    console.error('Error getting Google MFA credentials:', error);
+    return [];
+  }
+};
+
+/**
+ * Check if user has Google MFA biometric enabled
+ * @returns {Promise<boolean>}
+ */
+export const hasGoogleMFABiometric = async () => {
+  try {
+    const credentials = await getGoogleMFACredentials();
+    return credentials.length > 0;
+  } catch (error) {
+    console.error('Error checking Google MFA:', error);
+    return false;
+  }
+};
+
+/**
+ * Store Google MFA status in user preferences
+ * @param {boolean} enabled - Whether Google MFA is enabled
+ * @returns {Promise<void>}
+ */
+export const setGoogleMFAStatus = async (enabled = true) => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+      googleMFAEnabled: enabled,
+      lastGoogleMFAUpdate: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error setting Google MFA status:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get Google MFA status
+ * @returns {Promise<boolean>}
+ */
+export const getGoogleMFAStatus = async () => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+    return userDoc.exists() ? userDoc.data().googleMFAEnabled || false : false;
+  } catch (error) {
+    console.error('Error getting Google MFA status:', error);
+    return false;
+  }
+};
+
+/**
+ * Delete Google MFA biometric credential
+ * @param {string} credentialId - Credential ID to delete
+ * @returns {Promise<void>}
+ */
+export const deleteGoogleMFACredential = async (credentialId) => {
+  try {
+    const userId = getUserId();
+    const credentialDocRef = doc(db, 'users', userId, 'googleMFACredentials', credentialId);
+    await deleteDoc(credentialDocRef);
+  } catch (error) {
+    console.error('Error deleting Google MFA credential:', error);
+    throw error;
+  }
+};
