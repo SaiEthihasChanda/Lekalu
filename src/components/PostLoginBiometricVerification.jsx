@@ -72,9 +72,11 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       if (verified) {
         console.log('[PostLoginBiometric] Biometric verification successful');
         sessionStorage.setItem('biometricVerified', 'true');
+        console.log('[PostLoginBiometric] Session storage set, calling callback');
         if (onVerificationSuccess) {
           console.log('[PostLoginBiometric] Calling onVerificationSuccess callback');
           onVerificationSuccess();
+          console.log('[PostLoginBiometric] Callback executed');
         }
       } else {
         setError('Biometric verification failed - no assertion returned');

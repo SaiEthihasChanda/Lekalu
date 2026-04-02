@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext.jsx';
@@ -41,6 +41,7 @@ function AppContent() {
   const { user, isBiometricVerified, setIsBiometricVerified } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showTour, tourCompleted, startTour } = useOnboarding();
+  const verificationTimeoutRef = useRef(null); // Track verification timing
 
   // Start tour automatically on first login
   useEffect(() => {
@@ -66,21 +67,33 @@ function AppContent() {
         console.log('[AppContent] App visibility hidden, not resetting biometric yet');
       } else {
         console.log('[AppContent] App became visible again, requiring biometric re-verification');
-        setIsBiometricVerified(false);
-        sessionStorage.removeItem('biometricVerified');
+        // Set a flag to prevent immediate re-verification within 500ms
+        if (verificationTimeoutRef.current) {
+          clearTimeout(verificationTimeoutRef.current);
+        }
+        verificationTimeoutRef.current = setTimeout(() => {
+          setIsBiometricVerified(false);
+          sessionStorage.removeItem('biometricVerified');
+        }, 500);
       }
     };
 
     // Handle window blur (switching apps or windows)
     const handleWindowBlur = () => {
-      console.log('[AppContent] Window lost focus, will require biometric on focus');
+      console.log('[AppContent] Window lost focus');
     };
 
     // Handle window focus (returning to app)
     const handleWindowFocus = () => {
       console.log('[AppContent] Window regained focus, requiring biometric re-verification');
-      setIsBiometricVerified(false);
-      sessionStorage.removeItem('biometricVerified');
+      // Set a flag to prevent immediate re-verification within 500ms
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
+      }
+      verificationTimeoutRef.current = setTimeout(() => {
+        setIsBiometricVerified(false);
+        sessionStorage.removeItem('biometricVerified');
+      }, 500);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -91,6 +104,9 @@ function AppContent() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
+      if (verificationTimeoutRef.current) {
+        clearTimeout(verificationTimeoutRef.current);
+      }
     };
   }, [user, setIsBiometricVerified]);
 
@@ -109,7 +125,10 @@ function AppContent() {
     // Show biometric lock screen if not verified (mobile only)
     if (!isBiometricVerified && isMobileDevice()) {
       console.log('[AppContent] Rendering biometric verification screen');
-      return <PostLoginBiometricVerification onVerificationSuccess={() => setIsBiometricVerified(true)} />;
+      return <PostLoginBiometricVerification onVerificationSuccess={() => {
+        console.log('[AppContent] onVerificationSuccess called, setting isBiometricVerified to true');
+        setIsBiometricVerified(true);
+      }} />;
     }
 
     return (
