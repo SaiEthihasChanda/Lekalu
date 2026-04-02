@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 import { BiometricSettings } from './BiometricAuth.jsx';
-import { isMobileDevice } from '../utils/webauthn.js';
+import { isMobileDevice, registerBiometric } from '../utils/webauthn.js';
 
 /**
  * Settings Modal Component
@@ -18,6 +18,9 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isBiometricRegistering, setIsBiometricRegistering] = useState(false);
+  const [biometricError, setBiometricError] = useState('');
+  const [biometricSuccess, setBiometricSuccess] = useState('');
   const { group, user } = useAuth();
   const isGroupOwner = group && user && group.owner === user.uid;
 
@@ -43,6 +46,59 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
       console.error('Error clearing data:', err);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleBiometricRegister = async () => {
+    setBiometricError('');
+    setBiometricSuccess('');
+    setIsBiometricRegistering(true);
+
+    try {
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('[Biometric] Starting registration for user:', user.uid);
+
+      // Register biometric
+      const credential = await registerBiometric(user.uid, user.email);
+      console.log('[Biometric] Registration successful:', credential);
+
+      // Serialize credential to store it
+      const credentialData = {
+        id: credential.id,
+        rawId: Array.from(new Uint8Array(credential.rawId)),
+        response: {
+          clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON)),
+          attestationObject: Array.from(new Uint8Array(credential.response.attestationObject)),
+        },
+        type: credential.type,
+        deviceName: `Device registered on ${new Date().toLocaleDateString()}`,
+        registeredAt: new Date().getTime(),
+      };
+
+      // Store in localStorage (keyed by userId)
+      const existingCredentials = JSON.parse(
+        localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]'
+      );
+      existingCredentials.push(credentialData);
+      localStorage.setItem(
+        `biometricCredentials_${user.uid}`,
+        JSON.stringify(existingCredentials)
+      );
+
+      console.log('[Biometric] Stored credential to localStorage');
+      setBiometricSuccess('Biometric registered successfully! Next login will require verification.');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setBiometricSuccess(''), 3000);
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to register biometric';
+      console.error('[Biometric] Registration error:', err);
+      setBiometricError(errorMessage);
+    } finally {
+      setIsBiometricRegistering(false);
     }
   };
 
@@ -89,7 +145,23 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
 
           {/* Biometric Settings Section (Mobile Only) */}
           {isMobileDevice() && (
-            <BiometricSettings />
+            <>
+              <BiometricSettings
+                credentials={user ? JSON.parse(localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]') : []}
+                onRegister={handleBiometricRegister}
+                isLoading={isBiometricRegistering}
+              />
+              {biometricError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                  <p className="text-red-400 text-sm">{biometricError}</p>
+                </div>
+              )}
+              {biometricSuccess && (
+                <div className="p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
+                  <p className="text-green-400 text-sm">{biometricSuccess}</p>
+                </div>
+              )}
+            </>
           )}
 
           {/* Clear Data Section */}
