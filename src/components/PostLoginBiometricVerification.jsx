@@ -26,14 +26,16 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       const credentials = JSON.parse(
         localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]'
       );
-      setHasCredentials(credentials.length > 0);
-      console.log('[PostLoginBiometric] User has credentials:', credentials.length > 0);
+      const hasCredsFlag = credentials.length > 0;
+      setHasCredentials(hasCredsFlag);
+      console.log('[PostLoginBiometric] User:', user.uid, 'Has credentials:', hasCredsFlag, 'Count:', credentials.length);
     }
   }, [user]);
 
   // Clear biometric session on page unload/refresh
   useEffect(() => {
     const handleBeforeUnload = () => {
+      console.log('[PostLoginBiometric] Page unloading, clearing session');
       sessionStorage.removeItem('biometricVerified');
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -43,7 +45,9 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
   // Auto-verify if previous session had biometric verification
   useEffect(() => {
     const biometricVerified = sessionStorage.getItem('biometricVerified');
+    console.log('[PostLoginBiometric] Checking sessionStorage:', biometricVerified);
     if (biometricVerified === 'true' && onVerificationSuccess) {
+      console.log('[PostLoginBiometric] Auto-verifying from previous session');
       onVerificationSuccess();
     }
   }, [onVerificationSuccess]);
@@ -95,6 +99,17 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
     <div className="fixed inset-0 bg-primary flex items-center justify-center p-4 z-50">
       <div className="w-full max-w-md">
         <div className="bg-secondary rounded-lg border border-gray-700 p-8 text-center">
+          {/* DEBUG OVERLAY */}
+          <div className="mb-6 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-xs text-left">
+            <p className="font-bold text-yellow-400 mb-2">🐛 DEBUG INFO:</p>
+            <p className="text-yellow-300">User UID: {user?.uid || 'none'}</p>
+            <p className="text-yellow-300">Has Credentials: {hasCredentials ? '✅ YES' : '❌ NO'}</p>
+            <p className="text-yellow-300">Is Mobile: {isMobileDevice() ? '✅ YES' : '❌ NO'}</p>
+            <p className="text-yellow-300">Biometric Supported: {isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
+            <p className="text-yellow-300">Show Verify Button: {hasCredentials && isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
+            <p className="text-yellow-300">Attempts: {verificationAttempts}/{MAX_ATTEMPTS}</p>
+          </div>
+
           {/* Icon */}
           <div className="mb-6 flex justify-center">
             <div className="p-4 bg-accent/10 rounded-full">

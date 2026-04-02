@@ -56,10 +56,21 @@ function AppContent() {
     }
   }, [user, tourCompleted, showTour, startTour]);
 
+  // Debug logging
+  useEffect(() => {
+    if (user) {
+      console.log('[AppContent] User logged in:', user.uid);
+      console.log('[AppContent] isBiometricVerified:', isBiometricVerified);
+      console.log('[AppContent] isMobileDevice():', isMobileDevice());
+      console.log('[AppContent] Should show biometric screen:', !isBiometricVerified && isMobileDevice());
+    }
+  }, [user, isBiometricVerified]);
+
   // If user is logged in, show the main app with sidebar
   if (user) {
     // Show biometric lock screen if not verified (mobile only)
     if (!isBiometricVerified && isMobileDevice()) {
+      console.log('[AppContent] Rendering biometric verification screen');
       return <PostLoginBiometricVerification onVerificationSuccess={() => setIsBiometricVerified(true)} />;
     }
 
