@@ -66,12 +66,18 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
 
       console.log('[PostLoginBiometric] Attempting biometric verification for user:', user.uid);
       const verified = await authenticateWithBiometric(user.uid);
+      
+      console.log('[PostLoginBiometric] Verified result:', verified);
+      
       if (verified) {
         console.log('[PostLoginBiometric] Biometric verification successful');
         sessionStorage.setItem('biometricVerified', 'true');
-        if (onVerificationSuccess) onVerificationSuccess();
+        if (onVerificationSuccess) {
+          console.log('[PostLoginBiometric] Calling onVerificationSuccess callback');
+          onVerificationSuccess();
+        }
       } else {
-        setError('Biometric verification failed');
+        setError('Biometric verification failed - no assertion returned');
       }
     } catch (err) {
       console.error('[PostLoginBiometric] Biometric error:', err);
@@ -167,13 +173,15 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
             </button>
           )}
 
-          {/* Continue Button */}
-          <button
-            onClick={handleContinue}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors"
-          >
-            Continue to App
-          </button>
+          {/* Continue Button - ONLY if NO credentials registered */}
+          {!hasCredentials && (
+            <button
+              onClick={handleContinue}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors"
+            >
+              Continue to App
+            </button>
+          )}
 
           {/* Logout Button */}
           <button
