@@ -132,7 +132,6 @@ export const useBiometricAuth = () => {
     error,
     isBiometricSupported,
     credentials,
-    checkBiometricSupport,
     registerBiometric,
     authenticateWithBiometric,
     loadCredentials,
