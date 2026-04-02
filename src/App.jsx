@@ -56,6 +56,44 @@ function AppContent() {
     }
   }, [user, tourCompleted, showTour, startTour]);
 
+  // Reset biometric verification when app loses focus (tab switch, window minimize, another app)
+  useEffect(() => {
+    if (!user) return;
+
+    // Handle tab/window visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[AppContent] App visibility hidden, not resetting biometric yet');
+      } else {
+        console.log('[AppContent] App became visible again, requiring biometric re-verification');
+        setIsBiometricVerified(false);
+        sessionStorage.removeItem('biometricVerified');
+      }
+    };
+
+    // Handle window blur (switching apps or windows)
+    const handleWindowBlur = () => {
+      console.log('[AppContent] Window lost focus, will require biometric on focus');
+    };
+
+    // Handle window focus (returning to app)
+    const handleWindowFocus = () => {
+      console.log('[AppContent] Window regained focus, requiring biometric re-verification');
+      setIsBiometricVerified(false);
+      sessionStorage.removeItem('biometricVerified');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [user, setIsBiometricVerified]);
+
   // Debug logging
   useEffect(() => {
     if (user) {

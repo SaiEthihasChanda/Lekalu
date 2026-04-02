@@ -107,29 +107,6 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
     <div className="fixed inset-0 bg-primary flex items-center justify-center p-4 z-50">
       <div className="w-full max-w-md">
         <div className="bg-secondary rounded-lg border border-gray-700 p-8 text-center">
-          {/* DEBUG OVERLAY */}
-          <div className="mb-6 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-xs text-left">
-            <p className="font-bold text-yellow-400 mb-2">🐛 DEBUG INFO:</p>
-            <p className="text-yellow-300">User UID: {user?.uid || 'none'}</p>
-            <p className="text-yellow-300">Has Credentials: {hasCredentials ? '✅ YES' : '❌ NO'}</p>
-            <p className="text-yellow-300">Is Mobile: {isMobileDevice() ? '✅ YES' : '❌ NO'}</p>
-            <p className="text-yellow-300">Biometric Supported: {isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
-            <p className="text-yellow-300">Show Verify Button: {hasCredentials && isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
-            <p className="text-yellow-300">Attempts: {verificationAttempts}/{MAX_ATTEMPTS}</p>
-            <p className="text-yellow-300 mt-2 font-bold">LocalStorage Keys:</p>
-            {Object.keys(localStorage).length === 0 ? (
-              <p className="text-yellow-300">❌ EMPTY</p>
-            ) : (
-              Object.keys(localStorage)
-                .filter(key => key.includes('biometric'))
-                .map((key, i) => (
-                  <p key={i} className="text-yellow-300 break-all">
-                    • {key}
-                  </p>
-                ))
-            )}
-          </div>
-
           {/* Icon */}
           <div className="mb-6 flex justify-center">
             <div className="p-4 bg-accent/10 rounded-full">
@@ -193,7 +170,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
           </button>
 
           <p className="text-xs text-gray-500 mt-6">
-            Verification expires on page refresh. You can setup biometric later in Settings.
+            Verification expires when you leave the app or close the tab.
           </p>
         </div>
       </div>
