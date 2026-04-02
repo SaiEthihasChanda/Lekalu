@@ -54,6 +54,9 @@ export const AuthProvider = ({ children }) => {
             return;
           }
           
+          // Reset biometric verification on new login (user will need to verify)
+          setIsBiometricVerified(false);
+          
           // Store user email in Firestore if user is authenticated
           const userDocRef = doc(db, 'users', currentUser.uid);
           await setDoc(userDocRef, {

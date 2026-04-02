@@ -21,6 +21,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [isBiometricRegistering, setIsBiometricRegistering] = useState(false);
   const [biometricError, setBiometricError] = useState('');
   const [biometricSuccess, setBiometricSuccess] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   const { group, user } = useAuth();
   const isGroupOwner = group && user && group.owner === user.uid;
 
@@ -90,6 +91,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
 
       console.log('[Biometric] Stored credential to localStorage');
       setBiometricSuccess('Biometric registered successfully! Next login will require verification.');
+      setRefreshKey(prev => prev + 1);
       
       // Clear success message after 3 seconds
       setTimeout(() => setBiometricSuccess(''), 3000);
@@ -99,6 +101,27 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
       setBiometricError(errorMessage);
     } finally {
       setIsBiometricRegistering(false);
+    }
+  };
+
+  const handleBiometricRemove = (credentialId) => {
+    if (!user) return;
+
+    try {
+      const credentials = JSON.parse(
+        localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]'
+      );
+      const filtered = credentials.filter(cred => cred.id !== credentialId);
+      localStorage.setItem(
+        `biometricCredentials_${user.uid}`,
+        JSON.stringify(filtered)
+      );
+      setBiometricSuccess('Biometric device removed successfully.');
+      setRefreshKey(prev => prev + 1);
+      setTimeout(() => setBiometricSuccess(''), 3000);
+    } catch (err) {
+      setBiometricError('Failed to remove biometric device.');
+      console.error('[Biometric] Remove error:', err);
     }
   };
 
@@ -147,8 +170,10 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
           {isMobileDevice() && (
             <>
               <BiometricSettings
+                key={refreshKey}
                 credentials={user ? JSON.parse(localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]') : []}
                 onRegister={handleBiometricRegister}
+                onRemove={handleBiometricRemove}
                 isLoading={isBiometricRegistering}
               />
               {biometricError && (
