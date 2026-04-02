@@ -59,7 +59,7 @@ function AppContent() {
   if (user) {
     // Show biometric lock screen if not verified (mobile only)
     if (!isBiometricVerified) {
-      return <PostLoginBiometricVerification />;
+      return <PostLoginBiometricVerification onVerificationSuccess={() => setIsBiometricVerified(true)} />;
     }
 
     return (
