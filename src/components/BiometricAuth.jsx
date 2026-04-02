@@ -129,14 +129,17 @@ export const BiometricRegistrationButton = ({
  * Shows registered biometric credentials and management options
  * @param {Array} credentials - List of registered credentials
  * @param {Function} onRemove - Callback to remove a credential
+ * @param {Function} onRegister - Callback to register new biometric
  * @param {boolean} isLoading - Loading state
  */
 export const BiometricSettings = ({
   credentials = [],
   onRemove,
+  onRegister,
   isLoading = false,
 }) => {
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -148,26 +151,59 @@ export const BiometricSettings = ({
     checkSupport();
   }, []);
 
-  if (!isBiometricSupported || !credentials.length) {
+  if (!isBiometricSupported) {
     return null;
   }
 
+  const handleRegisterClick = async () => {
+    setIsRegistering(true);
+    try {
+      if (onRegister) {
+        await onRegister();
+      }
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   return (
-    <div className="border border-gray-700 rounded-lg p-4 bg-secondary">
-      <h3 className="text-lg font-semibold text-white mb-4">
-        Biometric Devices
-      </h3>
+    <div className="bg-primary border border-accent/30 rounded-lg p-4">
+      <div className="flex items-start gap-3 mb-4">
+        <Fingerprint size={20} className="text-accent flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white mb-1">Biometric Settings</h3>
+          <p className="text-sm text-gray-400">
+            {credentials.length === 0
+              ? 'Set up fingerprint or Face ID for faster, more secure login'
+              : `${credentials.length} biometric device${credentials.length !== 1 ? 's' : ''} registered`}
+          </p>
+        </div>
+      </div>
 
       {credentials.length === 0 ? (
-        <p className="text-gray-400 text-sm">
-          No biometric devices registered
-        </p>
+        <button
+          onClick={handleRegisterClick}
+          disabled={isRegistering || isLoading}
+          className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {isRegistering ? (
+            <>
+              <Loader size={18} className="animate-spin" />
+              <span>Setting up...</span>
+            </>
+          ) : (
+            <>
+              <Fingerprint size={18} />
+              <span>Add Biometric</span>
+            </>
+          )}
+        </button>
       ) : (
         <div className="space-y-2">
           {credentials.map((credential) => (
             <div
               key={credential.id}
-              className="flex items-center justify-between p-3 bg-primary rounded border border-gray-700"
+              className="flex items-center justify-between p-3 bg-secondary rounded border border-gray-700"
             >
               <div className="flex items-center gap-2">
                 <Fingerprint size={18} className="text-accent" />
@@ -193,6 +229,24 @@ export const BiometricSettings = ({
               </button>
             </div>
           ))}
+
+          <button
+            onClick={handleRegisterClick}
+            disabled={isRegistering || isLoading}
+            className="w-full mt-3 bg-secondary border border-accent/30 hover:border-accent text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isRegistering ? (
+              <>
+                <Loader size={18} className="animate-spin" />
+                <span>Adding...</span>
+              </>
+            ) : (
+              <>
+                <Fingerprint size={18} />
+                <span>Add Another Device</span>
+              </>
+            )}
+          </button>
         </div>
       )}
     </div>

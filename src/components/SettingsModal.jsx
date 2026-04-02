@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 import { BiometricSettings } from './BiometricAuth.jsx';
+import { isMobileDevice } from '../utils/webauthn.js';
 
 /**
  * Settings Modal Component
@@ -87,7 +88,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
           </div>
 
           {/* Biometric Settings Section (Mobile Only) */}
-          {navigator?.maxTouchPoints > 0 && (
+          {isMobileDevice() && (
             <BiometricSettings />
           )}
 
