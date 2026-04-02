@@ -37,7 +37,7 @@ const PrivateRoute = ({ children }) => {
 };
 
 function AppContent() {
-  const { user, isBiometricVerified } = useAuth();
+  const { user, isBiometricVerified, setIsBiometricVerified } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showTour, tourCompleted, startTour } = useOnboarding();
 
