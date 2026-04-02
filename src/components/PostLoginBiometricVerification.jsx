@@ -30,7 +30,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
   // Auto-verify if previous session had biometric verification
   useEffect(() => {
     const biometricVerified = sessionStorage.getItem('biometricVerified');
-    if (biometricVerified === 'true') {
+    if (biometricVerified === 'true' && onVerificationSuccess) {
       onVerificationSuccess();
     }
   }, [onVerificationSuccess]);
@@ -43,12 +43,14 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       // Check mobile device
       if (!isMobileDevice()) {
         setError('Biometric verification is only available on mobile devices');
+        setLoading(false);
         return;
       }
 
       // Check biometric support
       if (!isBiometricSupported) {
-        setError('Biometric authentication not available on this device');
+        setError('Biometric not supported on this device.');
+        setLoading(false);
         return;
       }
 
@@ -57,30 +59,22 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       if (verified) {
         // Store biometric verification in session (will be cleared on refresh)
         sessionStorage.setItem('biometricVerified', 'true');
-        onVerificationSuccess();
+        if (onVerificationSuccess) onVerificationSuccess();
       } else {
         setVerificationAttempts(prev => prev + 1);
         if (verificationAttempts + 1 >= MAX_ATTEMPTS) {
-          setError(`Too many failed attempts. Logging out for security.`);
-          setTimeout(() => {
-            logoutUser();
-            window.location.href = '/login';
-          }, 2000);
+          setError(`Too many failed attempts. Please logout and try again.`);
         } else {
-          setError(`Biometric verification failed. Attempts remaining: ${MAX_ATTEMPTS - verificationAttempts - 1}`);
+          setError(`Verification failed. Attempts: ${verificationAttempts + 1}/${MAX_ATTEMPTS}`);
         }
       }
     } catch (err) {
-      console.error('Biometric verification error:', err);
+      console.error('Biometric error:', err);
       setVerificationAttempts(prev => prev + 1);
       if (verificationAttempts + 1 >= MAX_ATTEMPTS) {
-        setError(`Too many failed attempts. Logging out for security.`);
-        setTimeout(() => {
-          logoutUser();
-          window.location.href = '/login';
-        }, 2000);
+        setError(`Too many failed attempts. Please logout and try again.`);
       } else {
-        setError(`Verification error: ${err.message || 'Please try again'}`);
+        setError(`Error: ${err.message || 'Verification failed'}`);
       }
     } finally {
       setLoading(false);
@@ -96,10 +90,15 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
     }
   };
 
+  const handleSkip = () => {
+    // Allow access without biometric if support not available
+    sessionStorage.setItem('biometricVerified', 'true');
+    if (onVerificationSuccess) onVerificationSuccess();
+  };
+
   return (
     <div className="fixed inset-0 bg-primary flex items-center justify-center p-4 z-50">
       <div className="w-full max-w-md">
-        {/* Card */}
         <div className="bg-secondary rounded-lg border border-gray-700 p-8 text-center">
           {/* Icon */}
           <div className="mb-6 flex justify-center">
@@ -109,51 +108,59 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
           </div>
 
           {/* Title */}
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Verify Your Identity
-          </h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Verify Your Identity</h2>
           <p className="text-gray-400 mb-6">
-            Use your fingerprint or Face ID to access the app
+            {isBiometricSupported 
+              ? 'Use your fingerprint or Face ID' 
+              : 'Biometric not available'}
           </p>
 
-          {/* Error Message */}
+          {/* Error */}
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-gap-3">
-              <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
-              <p className="text-red-400 text-sm text-left">{error}</p>
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+              <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Attempt Counter */}
-          {verificationAttempts > 0 && (
-            <div className="mb-4 text-sm text-gray-400">
-              Attempts: {verificationAttempts}/{MAX_ATTEMPTS}
-            </div>
+          {/* Buttons */}
+          {isBiometricSupported ? (
+            <>
+              <button
+                onClick={handleBiometricVerification}
+                disabled={loading || verificationAttempts >= MAX_ATTEMPTS}
+                className="w-full bg-accent hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-3 rounded-lg mb-3 flex items-center justify-center gap-2"
+              >
+                <Fingerprint size={20} />
+                {loading ? 'Verifying...' : 'Verify Biometric'}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleSkip}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3"
+            >
+              Continue
+            </button>
           )}
 
-          {/* Biometric Button */}
-          <button
-            onClick={handleBiometricVerification}
-            disabled={loading || verificationAttempts >= MAX_ATTEMPTS}
-            className="w-full bg-accent hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors mb-3 flex items-center justify-center gap-2"
-          >
-            <Fingerprint size={20} />
-            {loading ? 'Verifying...' : 'Verify with Biometric'}
-          </button>
+          {verificationAttempts >= MAX_ATTEMPTS && (
+            <button
+              onClick={handleSkip}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg mb-3"
+            >
+              Skip
+            </button>
+          )}
 
-          {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2"
           >
             <LogOut size={18} />
             Logout
           </button>
 
-          {/* Info */}
-          <p className="text-xs text-gray-500 mt-6">
-            This verification expires when you refresh or leave the page. You'll need to authenticate again.
-          </p>
+          <p className="text-xs text-gray-500 mt-6">Verification expires on page refresh</p>
         </div>
       </div>
     </div>
