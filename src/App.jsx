@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar.jsx';
 import { MobileTopBar } from './components/MobileTopBar.jsx';
 import { Tour } from './components/Tour.jsx';
 import { PostLoginBiometricVerification } from './components/PostLoginBiometricVerification.jsx';
+import { isMobileDevice } from './utils/webauthn.js';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
@@ -58,7 +59,7 @@ function AppContent() {
   // If user is logged in, show the main app with sidebar
   if (user) {
     // Show biometric lock screen if not verified (mobile only)
-    if (!isBiometricVerified) {
+    if (!isBiometricVerified && isMobileDevice()) {
       return <PostLoginBiometricVerification onVerificationSuccess={() => setIsBiometricVerified(true)} />;
     }
 

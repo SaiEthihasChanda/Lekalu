@@ -75,21 +75,28 @@ export const useBiometricAuth = () => {
   }, []);
 
   // Authenticate with biometric
-  const authenticateWithBiometric = useCallback(async () => {
+  const authenticateWithBiometric = useCallback(async (userId) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const assertion = await authenticateWithBiometricWebAuthn();
+      if (!userId) {
+        throw new Error('User ID is required for biometric authentication');
+      }
+
+      console.log('[useBiometricAuth] Authenticating with biometric for user:', userId);
+      const assertion = await authenticateWithBiometricWebAuthn(userId);
 
       if (!assertion) {
         throw new Error('Biometric authentication failed');
       }
 
+      console.log('[useBiometricAuth] Biometric authentication successful');
       setIsLoading(false);
       return assertion;
     } catch (err) {
       const errorMessage = formatBiometricError(err);
+      console.error('[useBiometricAuth] Authentication error:', err);
       setError(errorMessage);
       setIsLoading(false);
       throw err;

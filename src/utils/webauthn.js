@@ -85,7 +85,8 @@ export const registerBiometric = async (userId, email) => {
 
 /**
  * Authenticate using biometric credential
- * @param {string} userId - User's Firebase UID
+ * Verifies against credentials stored in localStorage
+ * @param {string} userId - User's Firebase UID (required to look up stored credentials)
  * @returns {Promise<PublicKeyCredential>}
  */
 export const authenticateWithBiometric = async (userId) => {
@@ -94,6 +95,24 @@ export const authenticateWithBiometric = async (userId) => {
   }
 
   try {
+    // Get stored credentials for this user
+    const storedCredentials = JSON.parse(
+      localStorage.getItem(`biometricCredentials_${userId}`) || '[]'
+    );
+
+    if (storedCredentials.length === 0) {
+      throw new Error('No biometric credentials registered for this user');
+    }
+
+    // Convert stored credential IDs back to Uint8Array format
+    const allowCredentials = storedCredentials.map(cred => ({
+      type: 'public-key',
+      id: new Uint8Array(cred.rawId),
+      transports: ['internal'], // Use internal authenticator (fingerprint/face)
+    }));
+
+    console.log('[WebAuthn] Retrieved stored credentials, count:', allowCredentials.length);
+
     // Challenge should come from server in production
     const challenge = new Uint8Array(32);
     crypto.getRandomValues(challenge);
@@ -101,6 +120,7 @@ export const authenticateWithBiometric = async (userId) => {
     const assertion = await navigator.credentials.get({
       publicKey: {
         challenge,
+        allowCredentials,
         timeout: 60000,
         userVerification: 'preferred',
       },
@@ -110,9 +130,10 @@ export const authenticateWithBiometric = async (userId) => {
       throw new Error('Biometric authentication cancelled');
     }
 
+    console.log('[WebAuthn] Biometric authentication successful');
     return assertion;
   } catch (error) {
-    console.error('Biometric authentication failed:', error);
+    console.error('[WebAuthn] Biometric authentication failed:', error);
     throw error;
   }
 };

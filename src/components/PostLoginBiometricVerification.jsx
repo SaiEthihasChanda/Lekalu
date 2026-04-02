@@ -3,19 +3,33 @@ import { Fingerprint, AlertCircle, LogOut } from 'lucide-react';
 import { useBiometricAuth } from '../hooks/useBiometricAuth.js';
 import { logoutUser } from '../fb/index.js';
 import { isMobileDevice } from '../utils/webauthn.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
  * Post-Login Biometric Verification Component
  * Final security layer after successful login/registration
- * Requires biometric verification before entering the app
+ * Only shows if user has registered biometric credentials
  * Mobile devices only - cleared on page refresh
  */
 export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
+  const { user } = useAuth();
   const { authenticateWithBiometric, isBiometricSupported } = useBiometricAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
+  const [hasCredentials, setHasCredentials] = useState(false);
   const MAX_ATTEMPTS = 2;
+
+  // Check if user has registered biometric credentials
+  useEffect(() => {
+    if (user) {
+      const credentials = JSON.parse(
+        localStorage.getItem(`biometricCredentials_${user.uid}`) || '[]'
+      );
+      setHasCredentials(credentials.length > 0);
+      console.log('[PostLoginBiometric] User has credentials:', credentials.length > 0);
+    }
+  }, [user]);
 
   // Clear biometric session on page unload/refresh
   useEffect(() => {
@@ -40,16 +54,22 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
     setVerificationAttempts(prev => prev + 1);
 
     try {
-      const verified = await authenticateWithBiometric();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      console.log('[PostLoginBiometric] Attempting biometric verification for user:', user.uid);
+      const verified = await authenticateWithBiometric(user.uid);
       if (verified) {
+        console.log('[PostLoginBiometric] Biometric verification successful');
         sessionStorage.setItem('biometricVerified', 'true');
         if (onVerificationSuccess) onVerificationSuccess();
       } else {
         setError('Biometric verification failed');
       }
     } catch (err) {
-      console.error('Biometric error:', err);
-      setError('Passkey not setup yet. Use Continue button instead.');
+      console.error('[PostLoginBiometric] Biometric error:', err);
+      setError(err.message || 'Biometric verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -57,6 +77,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
 
   const handleContinue = () => {
     // Skip biometric and continue to app
+    console.log('[PostLoginBiometric] Skipping biometric, continuing to app');
     sessionStorage.setItem('biometricVerified', 'true');
     if (onVerificationSuccess) onVerificationSuccess();
   };
@@ -84,7 +105,9 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
           {/* Title */}
           <h2 className="text-2xl font-bold text-white mb-2">Security Verification</h2>
           <p className="text-gray-400 mb-6 text-sm">
-            Optional: Secure your account with biometric or continue without it
+            {hasCredentials && isBiometricSupported
+              ? 'Verify with your registered biometric'
+              : 'Ready to access your account'}
           </p>
 
           {/* Error */}
@@ -94,25 +117,34 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
             </div>
           )}
 
-          {/* Continue Button (PRIMARY) */}
+          {/* Show biometric button only if user has credentials and device supports it */}
+          {hasCredentials && isBiometricSupported && (
+            <button
+              onClick={handleBiometricVerification}
+              disabled={loading}
+              className="w-full bg-accent hover:bg-blue-600 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Verifying...</span>
+                </>
+              ) : (
+                <>
+                  <Fingerprint size={20} />
+                  <span>Verify with Biometric</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Continue Button */}
           <button
             onClick={handleContinue}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg mb-3 transition-colors"
           >
             Continue to App
           </button>
-
-          {/* Biometric Button (OPTIONAL) */}
-          {isBiometricSupported && verificationAttempts < MAX_ATTEMPTS && (
-            <button
-              onClick={handleBiometricVerification}
-              disabled={loading}
-              className="w-full bg-accent/50 hover:bg-accent/70 disabled:opacity-50 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors mb-3"
-            >
-              <Fingerprint size={16} />
-              {loading ? 'Setting up...' : 'Add Biometric (Optional)'}
-            </button>
-          )}
 
           {/* Logout Button */}
           <button
