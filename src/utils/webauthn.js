@@ -112,6 +112,7 @@ export const authenticateWithBiometric = async (userId) => {
     }));
 
     console.log('[WebAuthn] Retrieved stored credentials, count:', allowCredentials.length);
+    console.log('[WebAuthn] Allowed credential IDs:', allowCredentials.map(c => Array.from(c.id)));
 
     // Challenge should come from server in production
     const challenge = new Uint8Array(32);
@@ -130,6 +131,24 @@ export const authenticateWithBiometric = async (userId) => {
       throw new Error('Biometric authentication cancelled');
     }
 
+    // Verify the assertion credential ID matches one of our stored credentials
+    const assertionCredId = Array.from(new Uint8Array(assertion.rawId));
+    console.log('[WebAuthn] Assertion credential ID:', assertionCredId);
+    
+    const matchingCredential = storedCredentials.find(cred => {
+      const storedId = JSON.stringify(cred.rawId);
+      const assertionId = JSON.stringify(assertionCredId);
+      return storedId === assertionId;
+    });
+
+    if (!matchingCredential) {
+      console.error('[WebAuthn] No matching credential found for assertion');
+      console.error('[WebAuthn] Stored IDs:', storedCredentials.map(c => JSON.stringify(c.rawId)));
+      console.error('[WebAuthn] Assertion ID:', JSON.stringify(assertionCredId));
+      throw new Error('Credential verification failed: ID mismatch');
+    }
+
+    console.log('[WebAuthn] Credential verified successfully, matched device:', matchingCredential.deviceName);
     console.log('[WebAuthn] Biometric authentication successful');
     return assertion;
   } catch (error) {

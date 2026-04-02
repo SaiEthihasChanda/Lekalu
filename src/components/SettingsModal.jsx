@@ -90,6 +90,9 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
       );
 
       console.log('[Biometric] Stored credential to localStorage');
+      console.log('[Biometric] Storage key:', `biometricCredentials_${user.uid}`);
+      console.log('[Biometric] All stored credentials:', existingCredentials);
+      console.log('[Biometric] Verify localStorage has it:', localStorage.getItem(`biometricCredentials_${user.uid}`));
       setBiometricSuccess('Biometric registered successfully! Next login will require verification.');
       setRefreshKey(prev => prev + 1);
       

@@ -29,6 +29,8 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       const hasCredsFlag = credentials.length > 0;
       setHasCredentials(hasCredsFlag);
       console.log('[PostLoginBiometric] User:', user.uid, 'Has credentials:', hasCredsFlag, 'Count:', credentials.length);
+      console.log('[PostLoginBiometric] All localStorage keys:', Object.keys(localStorage));
+      console.log('[PostLoginBiometric] Credentials data:', credentials);
     }
   }, [user]);
 
@@ -108,6 +110,18 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
             <p className="text-yellow-300">Biometric Supported: {isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
             <p className="text-yellow-300">Show Verify Button: {hasCredentials && isBiometricSupported ? '✅ YES' : '❌ NO'}</p>
             <p className="text-yellow-300">Attempts: {verificationAttempts}/{MAX_ATTEMPTS}</p>
+            <p className="text-yellow-300 mt-2 font-bold">LocalStorage Keys:</p>
+            {Object.keys(localStorage).length === 0 ? (
+              <p className="text-yellow-300">❌ EMPTY</p>
+            ) : (
+              Object.keys(localStorage)
+                .filter(key => key.includes('biometric'))
+                .map((key, i) => (
+                  <p key={i} className="text-yellow-300 break-all">
+                    • {key}
+                  </p>
+                ))
+            )}
           </div>
 
           {/* Icon */}
