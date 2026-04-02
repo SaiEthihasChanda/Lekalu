@@ -44,6 +44,26 @@ function AppContent() {
   const lastFocusTimeRef = useRef(Date.now()); // Track when app last had focus
   const wasHiddenRef = useRef(false); // Track if app was hidden
 
+  // On app load, clear biometric verification to ensure fresh session
+  useEffect(() => {
+    if (user) {
+      // Check if we have a valid biometric session
+      const biometricVerified = sessionStorage.getItem('biometricVerified');
+      const biometricTimestamp = sessionStorage.getItem('biometricVerifiedTime');
+      const now = Date.now();
+      
+      // If no timestamp or more than 30 minutes have passed, clear verification
+      if (!biometricTimestamp || (now - parseInt(biometricTimestamp)) > 30 * 60 * 1000) {
+        console.log('[AppContent] Biometric session expired or invalid, clearing');
+        sessionStorage.removeItem('biometricVerified');
+        sessionStorage.removeItem('biometricVerifiedTime');
+        setIsBiometricVerified(false);
+      } else {
+        console.log('[AppContent] Biometric session still valid');
+      }
+    }
+  }, [user, setIsBiometricVerified]);
+
   // Start tour automatically on first login
   useEffect(() => {
     if (user && !tourCompleted && !showTour) {

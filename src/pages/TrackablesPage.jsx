@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Modal } from '../components/Modal.jsx';
-import { BankAccountForm, BankAccountCard } from '../components/BankAccountForm.jsx';
+import { SourceForm, SourceCard } from '../components/SourceForm.jsx';
 import { TrackableForm, TrackableCard } from '../components/TrackableForm.jsx';
-import { useBankAccounts, useTrackables, useActivities } from '../hooks/index.js';
+import { useSources, useTrackables, useActivities } from '../hooks/index.js';
 import { calculateAccountBalance, formatAmount } from '../utils/analytics.js';
 
 export const TrackablesPage = () => {
@@ -13,7 +13,7 @@ export const TrackablesPage = () => {
   const [editingAccountId, setEditingAccountId] = useState(null);
   const [editingTrackableId, setEditingTrackableId] = useState(null);
 
-  const { accounts, addAccount, updateAccount, deleteAccount } = useBankAccounts();
+  const { accounts, addAccount, updateAccount, deleteAccount } = useSources();
   const { trackables, addTrackable, updateTrackable, deleteTrackable } = useTrackables();
   const { activities } = useActivities();
 
@@ -89,7 +89,7 @@ export const TrackablesPage = () => {
               : 'text-gray-400 hover:text-gray-300'
           }`}
         >
-          Bank Accounts
+          Sources
         </button>
       </div>
 
@@ -131,19 +131,19 @@ export const TrackablesPage = () => {
             className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
           >
             <Plus size={20} />
-            Add Bank Account
+            Add Source
           </button>
 
           <div className="space-y-2 md:space-y-3">
             {accounts.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm md:text-base">
-                No bank accounts added yet. Add one to get started!
+                No sources added yet. Add one to get started!
               </div>
             ) : (
               accounts.map(account => (
-                <BankAccountCard
+                <SourceCard
                   key={account.id}
-                  account={account}
+                  source={account}
                   balance={formatAmount(calculateAccountBalance(account.id, account.openingBalance, activities))}
                   onEdit={() => handleEditAccount(account.id)}
                   onDelete={() => deleteAccount(account.id)}
@@ -154,17 +154,18 @@ export const TrackablesPage = () => {
         </div>
       )}
 
-      {/* Account Modal */}
+      {/* Source Modal */}
       <Modal
         isOpen={isAccountModalOpen}
         onClose={handleCloseAccountModal}
-        title={editingAccountId ? 'Edit Account' : 'Add Bank Account'}
+        title={editingAccountId ? 'Edit Source' : 'Add Source'}
         size="md"
       >
-        <BankAccountForm
-          account={editingAccount}
+        <SourceForm
+          source={editingAccount}
           onSubmit={handleAddAccount}
           onCancel={handleCloseAccountModal}
+          isNewSource={!editingAccountId}
         />
       </Modal>
 

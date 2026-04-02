@@ -16,21 +16,22 @@ import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryp
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
- * @typedef {Object} BankAccount
+ * @typedef {Object} Source
  * @property {string} id - Firestore document ID
  * @property {string} userId - User ID for data isolation
- * @property {string} cardName - Display name for the account
+ * @property {string} cardName - Display name for the source
  * @property {string} accountNumber - Account number
+ * @property {'credit' | 'debit' | 'none'} sourceType - Type of source
  * @property {number} createdAt - Timestamp when created
  * @property {number} updatedAt - Timestamp when last updated
  */
 
 /**
- * Hook for managing bank accounts in Firestore with end-to-end encryption
- * Supports both personal and group accounts
- * @returns {Object} Bank accounts state and methods
+ * Hook for managing sources in Firestore with end-to-end encryption
+ * Supports both personal and group sources
+ * @returns {Object} Sources state and methods
  */
-export const useBankAccounts = () => {
+export const useSources = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -59,9 +60,14 @@ export const useBankAccounts = () => {
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      // Ensure sourceType is set (default to 'none' for old sources)
+                      if (!decrypted.sourceType) {
+                        decrypted.sourceType = 'none';
+                      }
+                      return decrypted;
                     } catch (decryptErr) {
-                      console.error(`Failed to decrypt bank account ${doc.id}:`, decryptErr);
+                      console.error(`Failed to decrypt source ${doc.id}:`, decryptErr);
                       return null;
                     }
                   })
@@ -69,12 +75,12 @@ export const useBankAccounts = () => {
                 setAccounts(groupData);
                 setLoading(false);
               } catch (err) {
-                console.error('Error processing group bank accounts:', err);
+                console.error('Error processing group sources:', err);
                 setError(err);
               }
             },
             (err) => {
-              console.error('Error listening to group bank accounts:', err);
+              console.error('Error listening to group sources:', err);
               setError(err);
               setLoading(false);
             }
@@ -94,9 +100,14 @@ export const useBankAccounts = () => {
                   .map(doc => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
-                      return decryptData(docData, encryptionKey);
+                      const decrypted = decryptData(docData, encryptionKey);
+                      // Ensure sourceType is set (default to 'none' for old sources)
+                      if (!decrypted.sourceType) {
+                        decrypted.sourceType = 'none';
+                      }
+                      return decrypted;
                     } catch (decryptErr) {
-                      console.error(`Failed to decrypt personal bank account ${doc.id}:`, decryptErr);
+                      console.error(`Failed to decrypt personal source ${doc.id}:`, decryptErr);
                       return null;
                     }
                   })
@@ -104,19 +115,19 @@ export const useBankAccounts = () => {
                 setAccounts(personalData);
                 setLoading(false);
               } catch (err) {
-                console.error('Error processing personal bank accounts:', err);
+                console.error('Error processing personal sources:', err);
                 setError(err);
               }
             },
             (err) => {
-              console.error('Error listening to personal bank accounts:', err);
+              console.error('Error listening to personal sources:', err);
               setError(err);
               setLoading(false);
             }
           );
         }
       } catch (err) {
-        console.error('Error setting up bank accounts listener:', err);
+        console.error('Error setting up sources listener:', err);
         setError(err);
         setLoading(false);
       }
@@ -146,7 +157,7 @@ export const useBankAccounts = () => {
       });
       return docRef.id;
     } catch (err) {
-      console.error('Error adding account:', err);
+      console.error('Error adding source:', err);
       throw err;
     }
   }, [group]);
@@ -164,7 +175,7 @@ export const useBankAccounts = () => {
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
-      console.error('Error updating account:', err);
+      console.error('Error updating source:', err);
       throw err;
     }
   }, [group]);
@@ -173,13 +184,16 @@ export const useBankAccounts = () => {
     try {
       await deleteDoc(doc(db, 'bankAccounts', id));
     } catch (err) {
-      console.error('Error deleting account:', err);
+      console.error('Error deleting source:', err);
       throw err;
     }
   }, []);
 
   return { accounts, loading, error, addAccount, updateAccount, deleteAccount };
 };
+
+// Backward compatibility: useBankAccounts is now useSources
+export const useBankAccounts = useSources;
 
 /**
  * @typedef {Object} Trackable

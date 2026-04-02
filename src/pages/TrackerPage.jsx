@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay } from 'date-fns';
-import { useTrackables, useTrackers, useActivities } from '../hooks/index.js';
-import { useBankAccounts } from '../hooks/index.js';
+import { useTrackables, useTrackers, useActivities, useSources } from '../hooks/index.js';
 import { getUserEmail } from '../fb/index.js';
 
 export const TrackerPage = () => {
@@ -11,7 +10,7 @@ export const TrackerPage = () => {
   const { trackables } = useTrackables();
   const { trackers, addTracker, updateTracker } = useTrackers();
   const { activities, addActivity, deleteActivity } = useActivities();
-  const { accounts } = useBankAccounts();
+  const { accounts } = useSources();
 
   const month = currentDate.getMonth() + 1;
   const year = currentDate.getFullYear();

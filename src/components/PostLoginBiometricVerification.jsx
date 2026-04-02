@@ -47,10 +47,22 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
   // Auto-verify if previous session had biometric verification
   useEffect(() => {
     const biometricVerified = sessionStorage.getItem('biometricVerified');
-    console.log('[PostLoginBiometric] Checking sessionStorage:', biometricVerified);
-    if (biometricVerified === 'true' && onVerificationSuccess) {
-      console.log('[PostLoginBiometric] Auto-verifying from previous session');
-      onVerificationSuccess();
+    const biometricTimestamp = sessionStorage.getItem('biometricVerifiedTime');
+    const now = Date.now();
+    
+    // Check if session is still valid (within 30 minutes)
+    if (biometricVerified === 'true' && biometricTimestamp) {
+      const sessionAge = now - parseInt(biometricTimestamp);
+      console.log('[PostLoginBiometric] Checking session age (ms):', sessionAge);
+      
+      if (sessionAge < 30 * 60 * 1000) { // 30 minutes
+        console.log('[PostLoginBiometric] Auto-verifying from previous session');
+        if (onVerificationSuccess) onVerificationSuccess();
+      } else {
+        console.log('[PostLoginBiometric] Session expired, requiring re-verification');
+        sessionStorage.removeItem('biometricVerified');
+        sessionStorage.removeItem('biometricVerifiedTime');
+      }
     }
   }, [onVerificationSuccess]);
 
@@ -72,6 +84,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       if (verified) {
         console.log('[PostLoginBiometric] Biometric verification successful');
         sessionStorage.setItem('biometricVerified', 'true');
+        sessionStorage.setItem('biometricVerifiedTime', Date.now().toString());
         console.log('[PostLoginBiometric] Session storage set, calling callback');
         if (onVerificationSuccess) {
           console.log('[PostLoginBiometric] Calling onVerificationSuccess callback');

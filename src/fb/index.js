@@ -518,7 +518,7 @@ export const migrateDataToGroup = async (groupId) => {
       counts.trackers++;
     });
 
-    // Migrate banks
+    // Migrate sources
     const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
     const banksSnapshot = await getDocs(banksQuery);
     banksSnapshot.forEach((docSnapshot) => {
@@ -602,7 +602,7 @@ export const autoMergeDataToGroup = async (groupId) => {
       return false;
     };
 
-    // Merge banks
+    // Migrate sources
     const banksQuery = query(collection(db, 'bankAccounts'), where('userId', '==', userId));
     const banksSnapshot = await getDocs(banksQuery);
     const banksToMerge = banksSnapshot.docs.filter(doc => !doc.data().groupId);

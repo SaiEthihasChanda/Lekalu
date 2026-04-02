@@ -45,7 +45,7 @@ service cloud.firestore {
     }
 
     // Bank Accounts - personal or group
-    match /bankAccounts/{accountId} {
+    match /bankAccounts/{sourceId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
          isGroupMember(request.auth.uid, resource.data.groupId));

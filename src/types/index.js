@@ -2,10 +2,11 @@
 // Note: JavaScript version - types are documented in comments
 
 /**
- * @typedef {Object} BankAccount
+ * @typedef {Object} Source
  * @property {string} id
  * @property {string} cardName
  * @property {string} accountNumber
+ * @property {'credit' | 'debit' | 'none'} sourceType
  * @property {number} createdAt
  */
 

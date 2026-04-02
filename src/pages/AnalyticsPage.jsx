@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useActivities, useTrackables, useBankAccounts } from '../hooks/index.js';
+import { useActivities, useTrackables, useSources } from '../hooks/index.js';
 import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
 import { TrendingUp, PieChart, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -50,7 +50,7 @@ export const AnalyticsPage = () => {
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
-  const { accounts } = useBankAccounts();
+  const { accounts } = useSources();
   const { group } = useAuth();
 
   // Get unique users in group from activities and fetch their emails

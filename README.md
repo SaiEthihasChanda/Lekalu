@@ -109,8 +109,8 @@ src/
 ├── components/          # Reusable React components
 │   ├── ActivityCard.jsx
 │   ├── AddActivityForm.jsx
-│   ├── BankAccountForm.jsx
-│   ├── BankAccountCard.jsx
+│   ├── SourceForm.jsx
+│   ├── SourceCard.jsx
 │   ├── Modal.jsx
 │   ├── Sidebar.jsx
 │   └── TrackableForm.jsx

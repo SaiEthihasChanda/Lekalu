@@ -23,7 +23,7 @@ Lekalu is a modern React + Vite application for personal expense tracking with a
 - **Sidebar.jsx** - Main navigation sidebar (updated with logout button and user email display)
 - **ActivityCard.jsx** - Display individual activity items
 - **AddActivityForm.jsx** - Form to add new activities
-- **BankAccountForm.jsx** & **BankAccountCard.jsx** - Bank account management UI
+- **SourceForm.jsx** & **SourceCard.jsx** - Source account management UI (formerly BankAccountForm/Card)
 - **TrackableForm.jsx** & **TrackableCard.jsx** - Trackable management UI
 
 ### Pages (`src/pages/`)
@@ -49,7 +49,7 @@ Lekalu is a modern React + Vite application for personal expense tracking with a
   - `addUserMetadata(data)` - Add userId and timestamps to data
 
 ### Hooks (`src/hooks/`)
-- Custom hooks for database CRUD operations: `useBankAccounts`, `useTrackables`, `useActivities`, `useTrackers`
+- Custom hooks for database CRUD operations: `useBankAccounts` (aliased as `useSources` for consistency with UI naming), `useTrackables`, `useActivities`, `useTrackers`
 
 ### Utils (`src/utils/`)
 - **analytics.js** - Analytics calculations, date range helpers, formatting utilities
@@ -106,7 +106,7 @@ Lekalu is a modern React + Vite application for personal expense tracking with a
 
 ## Data Models
 
-- **BankAccount** - Bank account with card name and account number
+- **Source** - Source account with card/account name, account number, and source type (credit/debit/none)
 - **Trackable** - Recurring transaction template linked to an account
 - **Activity** - Individual transaction (income, expense, or transfer)
 - **Tracker** - Monthly/yearly tracking status for trackables

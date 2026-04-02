@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
             setGroup(null);
             setIsBiometricVerified(false);
             sessionStorage.removeItem('biometricVerified');
+            sessionStorage.removeItem('biometricVerifiedTime');
             currentGroupIdRef.current = null;
             setLoading(false);
             return;
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }) => {
           console.log('[AuthContext] User logged in, resetting biometric verification');
           setIsBiometricVerified(false);
           sessionStorage.removeItem('biometricVerified');
+          sessionStorage.removeItem('biometricVerifiedTime');
           
           // Store user email in Firestore if user is authenticated
           const userDocRef = doc(db, 'users', currentUser.uid);

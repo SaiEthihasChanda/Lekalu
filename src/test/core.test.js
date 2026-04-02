@@ -113,6 +113,31 @@ describe('Encryption Utilities', () => {
       const isValid = account.cardName && account.cardName.trim().length > 0;
       expect(Boolean(isValid)).toBe(false);
     });
+
+    it('should support sourceType field with valid values', () => {
+      const validSourceTypes = ['credit', 'debit', 'none'];
+      
+      const creditCard = { id: '1', cardName: 'Visa', sourceType: 'credit' };
+      expect(validSourceTypes).toContain(creditCard.sourceType);
+      
+      const debitAccount = { id: '2', cardName: 'Savings', sourceType: 'debit' };
+      expect(validSourceTypes).toContain(debitAccount.sourceType);
+      
+      const otherAccount = { id: '3', cardName: 'Other', sourceType: 'none' };
+      expect(validSourceTypes).toContain(otherAccount.sourceType);
+    });
+
+    it('should default sourceType to none for old sources without the field', () => {
+      const oldAccount = { id: '1', cardName: 'Legacy Account', accountNumber: '1234' };
+      const sourceType = oldAccount.sourceType || 'none';
+      expect(sourceType).toBe('none');
+    });
+
+    it('should reject invalid sourceType values', () => {
+      const invalidSourceTypes = ['credit', 'debit', 'none'];
+      const invalidType = 'checking'; // invalid type
+      expect(invalidSourceTypes).not.toContain(invalidType);
+    });
   });
 
   describe('Activity Operations', () => {

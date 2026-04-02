@@ -6,6 +6,8 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
   const [type, setType] = useState('expense');
   const [trackableId, setTrackableId] = useState('');
   const [accountId, setAccountId] = useState(accounts[0]?.id || '');
+  const [fromAccountId, setFromAccountId] = useState(accounts[0]?.id || '');
+  const [toAccountId, setToAccountId] = useState(accounts[1]?.id || '');
   const [description, setDescription] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingData, setPendingData] = useState(null);
@@ -22,6 +24,18 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       return;
     }
 
+    // For transfer type, validate that from and to accounts are different
+    if (type === 'transfer') {
+      if (!fromAccountId || !toAccountId) {
+        alert('Please select both source and destination accounts for transfer');
+        return;
+      }
+      if (fromAccountId === toAccountId) {
+        alert('Source and destination accounts must be different');
+        return;
+      }
+    }
+
     // Build data object without undefined fields
     const data = {
       amount: parseFloat(amount),
@@ -29,13 +43,16 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       description,
     };
 
-    // Add accountId if selected
-    if (accountId) {
+    // Add accountId/transfer fields based on type
+    if (type === 'transfer') {
+      data.fromAccountId = fromAccountId;
+      data.toAccountId = toAccountId;
+    } else if (accountId) {
       data.accountId = accountId;
     }
 
-    // Only include trackableId if it's not empty
-    if (trackableId) {
+    // Only include trackableId if it's not empty and not a transfer
+    if (trackableId && type !== 'transfer') {
       data.trackableId = trackableId;
     }
 
@@ -51,6 +68,8 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
     setAmount('');
     setType('expense');
     setTrackableId('');
+    setFromAccountId(accounts[0]?.id || '');
+    setToAccountId(accounts[1]?.id || '');
     setDescription('');
   };
 
@@ -63,6 +82,8 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       setAmount('');
       setType('expense');
       setTrackableId('');
+      setFromAccountId(accounts[0]?.id || '');
+      setToAccountId(accounts[1]?.id || '');
       setDescription('');
     }
   };
@@ -135,21 +156,57 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
         </div>
       )}
 
-      <div>
-        <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
-        <select
-          value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
-          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
-        >
-          <option value="">Select an account</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
-              {acc.cardName} ({acc.accountNumber})
-            </option>
-          ))}
-        </select>
-      </div>
+      {type === 'transfer' ? (
+        <>
+          <div>
+            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">From Account *</label>
+            <select
+              value={fromAccountId}
+              onChange={(e) => setFromAccountId(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+            >
+              <option value="">Select source account</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.cardName} ({acc.accountNumber})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">To Account *</label>
+            <select
+              value={toAccountId}
+              onChange={(e) => setToAccountId(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+            >
+              <option value="">Select destination account</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.cardName} ({acc.accountNumber})
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      ) : (
+        <div>
+          <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+          >
+            <option value="">Select an account</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>
+                {acc.cardName} ({acc.accountNumber})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Description</label>

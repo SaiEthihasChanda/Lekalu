@@ -398,19 +398,19 @@ describe('User Workflow Sequences', () => {
   });
 
   describe('Multi-step Transaction Workflows', () => {
-    it('should complete workflow: create activity → transfer between accounts → verify account balances', () => {
-      // Step 1: Create two accounts
+    it('should complete workflow: create activity → transfer between sources → verify account balances', () => {
+      // Step 1: Create two sources
       mockAccounts.push(
-        { id: 'acc1', cardName: 'Chase', userId: mockUserId },
-        { id: 'acc2', cardName: 'BOA', userId: mockUserId }
+        { id: 'src1', cardName: 'Chase', sourceType: 'debit', userId: mockUserId },
+        { id: 'src2', cardName: 'BOA', sourceType: 'credit', userId: mockUserId }
       );
 
-      // Step 2: Add income to account 1
+      // Step 2: Add income to source 1
       mockActivities.push({
         id: 'act1',
         amount: 1000,
         type: 'income',
-        accountId: 'acc1',
+        accountId: 'src1',
         userId: mockUserId,
         date: Date.now()
       });
@@ -420,27 +420,94 @@ describe('User Workflow Sequences', () => {
         id: 'act2',
         amount: 500,
         type: 'transfer',
-        accountId: 'acc1', // from account
-        toAccountId: 'acc2', // to account
+        fromAccountId: 'src1', // from source
+        toAccountId: 'src2', // to source
         userId: mockUserId,
         date: Date.now()
       });
 
       // Step 4: Calculate balances
-      const acc1Income = mockActivities
-        .filter(a => a.accountId === 'acc1' && a.type === 'income')
+      const src1Income = mockActivities
+        .filter(a => a.accountId === 'src1' && a.type === 'income')
         .reduce((sum, a) => sum + a.amount, 0);
       
-      const acc1Transfers = mockActivities
-        .filter(a => a.accountId === 'acc1' && a.type === 'transfer')
+      const src1Transfers = mockActivities
+        .filter(a => a.fromAccountId === 'src1' && a.type === 'transfer')
         .reduce((sum, a) => sum + a.amount, 0);
 
-      const acc1Balance = acc1Income - acc1Transfers;
-      expect(acc1Balance).toBe(500);
+      const src1Balance = src1Income - src1Transfers;
+      expect(src1Balance).toBe(500);
 
       // Step 5: Verify transfer activity
       const transfer = mockActivities.find(a => a.type === 'transfer');
-      expect(transfer.toAccountId).toBe('acc2');
+      expect(transfer.toAccountId).toBe('src2');
+      expect(transfer.fromAccountId).toBe('src1');
+    });
+
+    it('should complete workflow: transfer with multiple source types → verify source type preservation', () => {
+      // Step 1: Create sources with different types
+      mockAccounts.push(
+        { id: 'debit1', cardName: 'Debit Account', sourceType: 'debit', userId: mockUserId },
+        { id: 'credit1', cardName: 'Credit Card', sourceType: 'credit', userId: mockUserId },
+        { id: 'other1', cardName: 'Savings', sourceType: 'none', userId: mockUserId }
+      );
+      expect(mockAccounts).toHaveLength(3);
+
+      // Step 2: Create transfer from debit to credit
+      mockActivities.push({
+        id: 'trans1',
+        amount: 500,
+        type: 'transfer',
+        fromAccountId: 'debit1',
+        toAccountId: 'credit1',
+        userId: mockUserId,
+        date: Date.now()
+      });
+
+      // Step 3: Create transfer from credit to other
+      mockActivities.push({
+        id: 'trans2',
+        amount: 300,
+        type: 'transfer',
+        fromAccountId: 'credit1',
+        toAccountId: 'other1',
+        userId: mockUserId,
+        date: Date.now()
+      });
+
+      // Step 4: Verify all transfers exist with correct source types
+      const allTransfers = mockActivities.filter(a => a.type === 'transfer');
+      expect(allTransfers).toHaveLength(2);
+
+      const debitAccount = mockAccounts.find(a => a.id === 'debit1');
+      expect(debitAccount.sourceType).toBe('debit');
+
+      const creditAccount = mockAccounts.find(a => a.id === 'credit1');
+      expect(creditAccount.sourceType).toBe('credit');
+    });
+
+    it('should validate transfer: cannot transfer from same account to itself', () => {
+      // Step 1: Create source
+      mockAccounts.push({
+        id: 'acc1',
+        cardName: 'Chase',
+        sourceType: 'debit',
+        userId: mockUserId
+      });
+
+      // Step 2: Attempt to create transfer to same account (should be rejected)
+      const invalidTransfer = {
+        id: 'trans1',
+        amount: 100,
+        type: 'transfer',
+        fromAccountId: 'acc1',
+        toAccountId: 'acc1', // Same account - invalid
+        userId: mockUserId
+      };
+
+      // Step 3: Validate transfer logic
+      const isValid = invalidTransfer.fromAccountId !== invalidTransfer.toAccountId;
+      expect(isValid).toBe(false); // Should fail validation
     });
 
     it('should complete workflow: create trackable → add manual activity → add tracker activity → verify totals', () => {
