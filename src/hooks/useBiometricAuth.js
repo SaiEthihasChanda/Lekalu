@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
-  registerBiometric,
-  authenticateWithBiometric,
+  registerBiometric as registerBiometricWebAuthn,
+  authenticateWithBiometric as authenticateWithBiometricWebAuthn,
   isMobileDevice,
   isBiometricAvailable,
   formatBiometricError,
@@ -24,11 +24,22 @@ export const useBiometricAuth = () => {
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const [credentials, setCredentials] = useState([]);
 
-  // Check biometric support on mount
-  const checkBiometricSupport = useCallback(async () => {
-    const isMobile = isMobileDevice();
-    const isAvailable = await isBiometricAvailable();
-    setIsBiometricSupported(isMobile && isAvailable);
+  // Check biometric support on mount and update state
+  useEffect(() => {
+    const checkSupport = async () => {
+      try {
+        const isMobile = isMobileDevice();
+        const isAvailable = await isBiometricAvailable();
+        const supported = isMobile && isAvailable;
+        console.log(`[useBiometricAuth] Mobile: ${isMobile}, Available: ${isAvailable}, Supported: ${supported}`);
+        setIsBiometricSupported(supported);
+      } catch (err) {
+        console.error('[useBiometricAuth] Error checking biometric support:', err);
+        setIsBiometricSupported(false);
+      }
+    };
+    
+    checkSupport();
   }, []);
 
   // Register new biometric credential
@@ -38,7 +49,7 @@ export const useBiometricAuth = () => {
 
     try {
       // Get WebAuthn credential from device
-      const credentialData = await registerBiometric(userId, email);
+      const credentialData = await registerBiometricWebAuthn(userId, email);
 
       // Store in Firestore
       const storedCredential = await registerBiometricCredential(
@@ -69,7 +80,7 @@ export const useBiometricAuth = () => {
     setError(null);
 
     try {
-      const assertion = await authenticateWithBiometric();
+      const assertion = await authenticateWithBiometricWebAuthn();
 
       if (!assertion) {
         throw new Error('Biometric authentication failed');
