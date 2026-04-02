@@ -5,6 +5,7 @@ import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext.
 import { Sidebar } from './components/Sidebar.jsx';
 import { MobileTopBar } from './components/MobileTopBar.jsx';
 import { Tour } from './components/Tour.jsx';
+import { PostLoginBiometricVerification } from './components/PostLoginBiometricVerification.jsx';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
@@ -36,7 +37,7 @@ const PrivateRoute = ({ children }) => {
 };
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, isBiometricVerified } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showTour, tourCompleted, startTour } = useOnboarding();
 
@@ -56,6 +57,11 @@ function AppContent() {
 
   // If user is logged in, show the main app with sidebar
   if (user) {
+    // Show biometric lock screen if not verified (mobile only)
+    if (!isBiometricVerified) {
+      return <PostLoginBiometricVerification />;
+    }
+
     return (
       <>
         <Tour />

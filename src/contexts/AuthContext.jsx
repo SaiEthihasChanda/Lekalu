@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isBiometricVerified, setIsBiometricVerified] = useState(false);
   const unsubscribeUserDocRef = useRef(null);
   const currentGroupIdRef = useRef(null);
   const groupFetchTimeoutRef = useRef(null);
@@ -44,9 +45,10 @@ export const AuthProvider = ({ children }) => {
 
           setUser(currentUser);
           
-          // Reset group on logout
+          // Reset group and biometric on logout
           if (!currentUser) {
             setGroup(null);
+            setIsBiometricVerified(false);
             currentGroupIdRef.current = null;
             setLoading(false);
             return;
@@ -130,7 +132,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, group, loading, error }}>
+    <AuthContext.Provider value={{ user, group, loading, error, isBiometricVerified, setIsBiometricVerified }}>
       {children}
     </AuthContext.Provider>
   );
