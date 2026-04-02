@@ -41,7 +41,8 @@ function AppContent() {
   const { user, isBiometricVerified, setIsBiometricVerified } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { showTour, tourCompleted, startTour } = useOnboarding();
-  const verificationTimeoutRef = useRef(null); // Track verification timing
+  const lastFocusTimeRef = useRef(Date.now()); // Track when app last had focus
+  const wasHiddenRef = useRef(false); // Track if app was hidden
 
   // Start tour automatically on first login
   useEffect(() => {
@@ -57,43 +58,57 @@ function AppContent() {
     }
   }, [user, tourCompleted, showTour, startTour]);
 
-  // Reset biometric verification when app loses focus (tab switch, window minimize, another app)
+  // Reset biometric verification when app loses/regains focus ONLY if hidden for significant time
   useEffect(() => {
     if (!user) return;
 
     // Handle tab/window visibility changes
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('[AppContent] App visibility hidden, not resetting biometric yet');
+        console.log('[AppContent] App hidden, tracking time');
+        wasHiddenRef.current = true;
       } else {
-        console.log('[AppContent] App became visible again, requiring biometric re-verification');
-        // Set a flag to prevent immediate re-verification within 500ms
-        if (verificationTimeoutRef.current) {
-          clearTimeout(verificationTimeoutRef.current);
+        console.log('[AppContent] App became visible again');
+        if (wasHiddenRef.current) {
+          const timeSinceLastFocus = Date.now() - lastFocusTimeRef.current;
+          console.log('[AppContent] Time hidden (ms):', timeSinceLastFocus);
+          // Only reset if hidden for 10+ seconds
+          if (timeSinceLastFocus > 10000) {
+            console.log('[AppContent] Hidden for 10+s, requiring biometric re-verification');
+            setIsBiometricVerified(false);
+            sessionStorage.removeItem('biometricVerified');
+          } else {
+            console.log('[AppContent] Hidden for <10s, keeping verification');
+          }
+          wasHiddenRef.current = false;
         }
-        verificationTimeoutRef.current = setTimeout(() => {
+        lastFocusTimeRef.current = Date.now();
+      }
+    };
+
+    // Handle window focus
+    const handleWindowFocus = () => {
+      console.log('[AppContent] Window focus event');
+      if (wasHiddenRef.current) {
+        const timeSinceLastFocus = Date.now() - lastFocusTimeRef.current;
+        console.log('[AppContent] Time since last focus (ms):', timeSinceLastFocus);
+        // Only reset if unfocused for 10+ seconds
+        if (timeSinceLastFocus > 10000) {
+          console.log('[AppContent] Unfocused for 10+s, requiring biometric re-verification');
           setIsBiometricVerified(false);
           sessionStorage.removeItem('biometricVerified');
-        }, 500);
+        } else {
+          console.log('[AppContent] Unfocused for <10s, keeping verification');
+        }
+        wasHiddenRef.current = false;
       }
+      lastFocusTimeRef.current = Date.now();
     };
 
-    // Handle window blur (switching apps or windows)
+    // Handle window blur
     const handleWindowBlur = () => {
-      console.log('[AppContent] Window lost focus');
-    };
-
-    // Handle window focus (returning to app)
-    const handleWindowFocus = () => {
-      console.log('[AppContent] Window regained focus, requiring biometric re-verification');
-      // Set a flag to prevent immediate re-verification within 500ms
-      if (verificationTimeoutRef.current) {
-        clearTimeout(verificationTimeoutRef.current);
-      }
-      verificationTimeoutRef.current = setTimeout(() => {
-        setIsBiometricVerified(false);
-        sessionStorage.removeItem('biometricVerified');
-      }, 500);
+      console.log('[AppContent] Window blur event');
+      wasHiddenRef.current = true;
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -104,9 +119,6 @@ function AppContent() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
-      if (verificationTimeoutRef.current) {
-        clearTimeout(verificationTimeoutRef.current);
-      }
     };
   }, [user, setIsBiometricVerified]);
 
@@ -127,6 +139,7 @@ function AppContent() {
       console.log('[AppContent] Rendering biometric verification screen');
       return <PostLoginBiometricVerification onVerificationSuccess={() => {
         console.log('[AppContent] onVerificationSuccess called, setting isBiometricVerified to true');
+        lastFocusTimeRef.current = Date.now(); // Reset focus timer after successful verification
         setIsBiometricVerified(true);
       }} />;
     }
