@@ -66,6 +66,16 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
     }
   }, [onVerificationSuccess]);
 
+  // If user has no biometric credentials, auto-proceed to app
+  useEffect(() => {
+    if (hasCredentials === false) {
+      console.log('[PostLoginBiometric] No biometric credentials found, proceeding to app');
+      sessionStorage.setItem('biometricVerified', 'true');
+      sessionStorage.setItem('biometricVerifiedTime', Date.now().toString());
+      if (onVerificationSuccess) onVerificationSuccess();
+    }
+  }, [hasCredentials, onVerificationSuccess]);
+
   const handleBiometricVerification = async () => {
     setError('');
     setLoading(true);
@@ -117,6 +127,11 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
       console.error('Logout error:', err);
     }
   };
+
+  // If user has no biometric credentials setup, skip directly to app
+  if (!hasCredentials) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-primary flex items-center justify-center p-4 z-50">

@@ -3,7 +3,7 @@ import { useActivities, useTrackables, useSources } from '../hooks/index.js';
 import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
 import { TrendingUp, PieChart, Wallet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
-import { getUserEmail } from '../fb/index.js';
+import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -47,11 +47,23 @@ export const AnalyticsPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [uniqueUsers, setUniqueUsers] = useState([]);
+  const [analyticsConfig, setAnalyticsConfig] = useState(null);
+  const [configLoading, setConfigLoading] = useState(true);
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
   const { accounts } = useSources();
   const { group } = useAuth();
+
+  // Set up real-time listener for analytics configuration
+  useEffect(() => {
+    const unsubscribe = listenToAnalyticsConfig((config) => {
+      setAnalyticsConfig(config || {});
+      setConfigLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Get unique users in group from activities and fetch their emails
   useEffect(() => {
@@ -292,6 +304,198 @@ export const AnalyticsPage = () => {
   const categoryEntries = Object.entries(analytics.byCategory).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
   const accountEntries = Object.entries(analytics.byAccount);
 
+  // Helper function to check if a visualization should be shown
+  const isVisualizationVisible = (vizId) => {
+    // Default to true if config not loaded yet (show all)
+    if (!analyticsConfig) return true;
+    // Check if visualization is explicitly set to false
+    const vizConfig = analyticsConfig[vizId];
+    return vizConfig?.visible !== false;
+  };
+
+  // Get sorted chart list based on config positions
+  const getSortedCharts = () => {
+    const charts = [
+      { id: 'categoryPie', label: 'Income vs Expense' },
+      { id: 'trackablePie', label: 'By Trackable' },
+      { id: 'accountBalanceOverTime', label: 'Account Balances Over Time' },
+      { id: 'trendsOverTime', label: 'Trends Over Time' },
+      { id: 'currentBalances', label: 'Current Bank Balances' },
+    ];
+
+    // Sort by position in config
+    return charts.sort((a, b) => {
+      const posA = analyticsConfig?.[a.id]?.position ?? 999;
+      const posB = analyticsConfig?.[b.id]?.position ?? 999;
+      return posA - posB;
+    }).filter(chart => isVisualizationVisible(chart.id));
+  };
+
+  const sortedCharts = useMemo(() => getSortedCharts(), [analyticsConfig]);
+
+  // Helper function to render each chart type
+  const renderChart = (chartId) => {
+    switch(chartId) {
+      case 'categoryPie':
+        return (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <PieChart size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Income vs Expense</h2>
+            </div>
+            {categoryPieData.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <RechartsPieChart>
+                  <Pie
+                    data={categoryPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${formatAmount(value)}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => formatAmount(value)} />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        );
+      
+      case 'trackablePie':
+        return (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <PieChart size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">By Trackable</h2>
+            </div>
+            {trackablePieData.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <RechartsPieChart>
+                  <Pie
+                    data={trackablePieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${formatAmount(value)}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {trackablePieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => formatAmount(value)} />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        );
+
+      case 'accountBalanceOverTime':
+        return (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Account Balances Over Time</h2>
+            </div>
+            {accountBalanceOverTime.length === 0 || accounts.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={accountBalanceOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip content={<CustomTooltip />} formatter={(value) => formatAmount(value)} />
+                  <Legend />
+                  {accounts.map((account, idx) => (
+                    <Line
+                      key={account.id}
+                      type="monotone"
+                      dataKey={account.id}
+                      stroke={COLORS[idx % COLORS.length]}
+                      name={account.cardName}
+                      strokeWidth={2}
+                      dot={{ fill: COLORS[idx % COLORS.length], r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        );
+
+      case 'trendsOverTime':
+        return (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Trends Over Time</h2>
+            </div>
+            {dateAnalyticsData.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={dateAnalyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="name" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend />
+                  <Line type="monotone" dataKey="income" stroke="#10B981" name="Income" strokeWidth={2} dot={{ fill: '#10B981' }} />
+                  <Line type="monotone" dataKey="expense" stroke="#EF4444" name="Expense" strokeWidth={2} dot={{ fill: '#EF4444' }} />
+                  <Line type="monotone" dataKey="net" stroke="#3B82F6" name="Net" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        );
+
+      case 'currentBalances':
+        return (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Current Bank Balances</h2>
+            </div>
+            {accountBalancesData.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No bank accounts added</p>
+            ) : (
+              <div className="space-y-2 md:space-y-3">
+                {accountBalancesData.map((account, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
+                    <div>
+                      <p className="text-white font-medium text-sm md:text-base truncate">{account.name}</p>
+                    </div>
+                    <div>
+                      <p className={`text-base md:text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
+                        {formatAmount(account.balance)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6 md:mb-8">
@@ -300,10 +504,10 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8\">
-        <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4\">Filters</h2>
+      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
+        <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4">Filters</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4\">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4">
           <div>
             <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
             <select
@@ -421,152 +625,13 @@ export const AnalyticsPage = () => {
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-8 mb-4 md:mb-8">
-        {/* Income vs Expense Pie Chart */}
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <PieChart size={20} className="text-accent" />
-            <h2 className="text-base md:text-lg font-semibold text-white truncate">Income vs Expense</h2>
+      {/* Charts Section - Dynamic ordering based on config */}
+      <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
+        {sortedCharts.map((chart) => (
+          <div key={chart.id}>
+            {renderChart(chart.id)}
           </div>
-          {categoryPieData.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No data available</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <RechartsPieChart>
-                <Pie
-                  data={categoryPieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${formatAmount(value)}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatAmount(value)} />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Trackable Analytics Pie Chart */}
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <PieChart size={20} className="text-accent" />
-            <h2 className="text-base md:text-lg font-semibold text-white truncate">By Trackable</h2>
-          </div>
-          {trackablePieData.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No data available</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={250}>
-              <RechartsPieChart>
-                <Pie
-                  data={trackablePieData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${formatAmount(value)}`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {trackablePieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatAmount(value)} />
-              </RechartsPieChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-
-      {/* Bank Account Balance Over Time Line Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={20} className="text-accent" />
-          <h2 className="text-base md:text-lg font-semibold text-white truncate">Account Balances Over Time</h2>
-        </div>
-        {accountBalanceOverTime.length === 0 || accounts.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No data available</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={accountBalanceOverTime}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip content={<CustomTooltip />} formatter={(value) => formatAmount(value)} />
-              <Legend />
-              {accounts.map((account, idx) => (
-                <Line
-                  key={account.id}
-                  type="monotone"
-                  dataKey={account.id}
-                  stroke={COLORS[idx % COLORS.length]}
-                  name={account.cardName}
-                  strokeWidth={2}
-                  dot={{ fill: COLORS[idx % COLORS.length], r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
-      {/* Date Analytics Line Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={20} className="text-accent" />
-          <h2 className="text-base md:text-lg font-semibold text-white truncate">Trends Over Time</h2>
-        </div>
-        {dateAnalyticsData.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No data available</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={dateAnalyticsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="name" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="income" stroke="#10B981" name="Income" strokeWidth={2} dot={{ fill: '#10B981' }} />
-              <Line type="monotone" dataKey="expense" stroke="#EF4444" name="Expense" strokeWidth={2} dot={{ fill: '#EF4444' }} />
-              <Line type="monotone" dataKey="net" stroke="#3B82F6" name="Net" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
-      {/* Account Balances Chart */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Wallet size={20} className="text-accent" />
-          <h2 className="text-base md:text-lg font-semibold text-white truncate">Current Bank Balances</h2>
-        </div>
-        {accountBalancesData.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No bank accounts added</p>
-        ) : (
-          <div className="space-y-2 md:space-y-3">
-            {accountBalancesData.map((account, index) => (
-              <div key={index} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
-                <div>
-                  <p className="text-white font-medium text-sm md:text-base truncate">{account.name}</p>
-                </div>
-                <div>
-                  <p className={`text-base md:text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
-                    {formatAmount(account.balance)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );

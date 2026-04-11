@@ -76,46 +76,44 @@ export const SourceForm = ({ source, onSubmit, isLoading = false, onCancel, isNe
         />
       </div>
 
-      {isNewSource && (
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Source Type *</label>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="sourceType"
-                value="credit"
-                checked={sourceType === 'credit'}
-                onChange={(e) => setSourceType(e.target.value)}
-                className="w-4 h-4"
-              />
-              <span className="text-gray-300">Credit Card</span>
-            </label>
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="sourceType"
-                value="debit"
-                checked={sourceType === 'debit'}
-                onChange={(e) => setSourceType(e.target.value)}
-                className="w-4 h-4"
-              />
-              <span className="text-gray-300">Debit Account</span>
-            </label>
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="radio"
-                name="sourceType"
-                value="none"
-                checked={sourceType === 'none'}
-                onChange={(e) => setSourceType(e.target.value)}
-                className="w-4 h-4"
-              />
-              <span className="text-gray-300">Other / None</span>
-            </label>
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">Source Type *</label>
+        <div className="space-y-2">
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="sourceType"
+              value="credit"
+              checked={sourceType === 'credit'}
+              onChange={(e) => setSourceType(e.target.value)}
+              className="w-4 h-4"
+            />
+            <span className="text-gray-300">Credit Card</span>
+          </label>
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="sourceType"
+              value="debit"
+              checked={sourceType === 'debit'}
+              onChange={(e) => setSourceType(e.target.value)}
+              className="w-4 h-4"
+            />
+            <span className="text-gray-300">Debit Account</span>
+          </label>
+          <label className="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              name="sourceType"
+              value="none"
+              checked={sourceType === 'none'}
+              onChange={(e) => setSourceType(e.target.value)}
+              className="w-4 h-4"
+            />
+            <span className="text-gray-300">Other / None</span>
+          </label>
         </div>
-      )}
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Opening Balance</label>

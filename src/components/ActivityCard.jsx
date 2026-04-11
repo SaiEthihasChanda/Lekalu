@@ -44,7 +44,7 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
             {amountPrefix}
             {formatAmount(activity.amount)}
           </span>
-          <span className="text-xs text-gray-500">{formatDate(activity.date, 'HH:mm')}</span>
+          <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(activity.date, 'MMM dd, yyyy HH:mm')}</span>
         </div>
       </div>
 

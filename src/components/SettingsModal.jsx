@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, AlertTriangle, Trash2, X, Users, Lock, Fingerprint } from 'lucide-react';
-import { deleteAllUserData, getUserId, initializeAuth } from '../fb/index.js';
+import { deleteAllUserData, getUserId, initializeAuth, saveAnalyticsConfig, getAnalyticsConfig } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 import { BiometricSettings } from './BiometricAuth.jsx';
+import { AnalyticsDisplaySettings } from './AnalyticsDisplaySettings.jsx';
 import { isMobileDevice, registerBiometric } from '../utils/webauthn.js';
 
 /**
@@ -22,8 +23,33 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [biometricError, setBiometricError] = useState('');
   const [biometricSuccess, setBiometricSuccess] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [analyticsConfig, setAnalyticsConfig] = useState(null);
+  const [isLoadingAnalyticsConfig, setIsLoadingAnalyticsConfig] = useState(false);
+  const [isSavingAnalyticsConfig, setIsSavingAnalyticsConfig] = useState(false);
+  const [analyticsConfigError, setAnalyticsConfigError] = useState('');
+  const [analyticsConfigSuccess, setAnalyticsConfigSuccess] = useState('');
   const { group, user } = useAuth();
   const isGroupOwner = group && user && group.owner === user.uid;
+
+  // Load analytics config on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      setIsLoadingAnalyticsConfig(true);
+      try {
+        const config = await getAnalyticsConfig();
+        setAnalyticsConfig(config);
+      } catch (err) {
+        console.error('Error loading analytics config:', err);
+        setAnalyticsConfigError('Failed to load analytics configuration');
+      } finally {
+        setIsLoadingAnalyticsConfig(false);
+      }
+    };
+
+    if (isOpen && user) {
+      loadConfig();
+    }
+  }, [isOpen, user]);
 
   const handleClearData = async () => {
     setError('');
@@ -128,6 +154,25 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
     }
   };
 
+  // Handle analytics config changes
+  const handleAnalyticsConfigChange = async (newConfig) => {
+    setAnalyticsConfig(newConfig);
+    setIsSavingAnalyticsConfig(true);
+    setAnalyticsConfigError('');
+    setAnalyticsConfigSuccess('');
+
+    try {
+      await saveAnalyticsConfig(newConfig);
+      setAnalyticsConfigSuccess('Analytics configuration saved successfully!');
+      setTimeout(() => setAnalyticsConfigSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error saving analytics config:', err);
+      setAnalyticsConfigError('Failed to save analytics configuration');
+    } finally {
+      setIsSavingAnalyticsConfig(false);
+    }
+  };
+
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose}>
@@ -191,6 +236,41 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               )}
             </>
           )}
+
+          {/* Analytics Display Settings Section */}
+          <div className="bg-primary border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-3 mb-4">
+              <Settings size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white mb-1">Analytics Display</h3>
+                <p className="text-sm text-gray-400">
+                  Customize which visualizations appear in your analytics dashboard
+                </p>
+              </div>
+            </div>
+
+            {isLoadingAnalyticsConfig ? (
+              <p className="text-gray-400 text-sm text-center py-4">Loading configuration...</p>
+            ) : analyticsConfig ? (
+              <>
+                <AnalyticsDisplaySettings
+                  config={analyticsConfig}
+                  onConfigChange={handleAnalyticsConfigChange}
+                  isLoading={isSavingAnalyticsConfig}
+                />
+                {analyticsConfigError && (
+                  <div className="mt-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                    <p className="text-red-400 text-sm">{analyticsConfigError}</p>
+                  </div>
+                )}
+                {analyticsConfigSuccess && (
+                  <div className="mt-3 p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
+                    <p className="text-green-400 text-sm">{analyticsConfigSuccess}</p>
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
 
           {/* Clear Data Section */}
           <div className="bg-primary border border-red-500/30 rounded-lg p-4">

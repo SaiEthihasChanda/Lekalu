@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot } from 'firebase/firestore';
 import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import CryptoJS from 'crypto-js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
@@ -1162,5 +1162,98 @@ export const deleteGoogleMFACredential = async (credentialId) => {
   } catch (error) {
     console.error('Error deleting Google MFA credential:', error);
     throw error;
+  }
+};
+
+/**
+ * Save analytics display configuration for the user
+ * @param {Object} config - Analytics configuration with visualization settings
+ * @returns {Promise<void>}
+ */
+export const saveAnalyticsConfig = async (config) => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+      analyticsConfig: config,
+      lastAnalyticsConfigUpdate: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error saving analytics config:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get analytics display configuration for the user
+ * @returns {Promise<Object>} Analytics configuration
+ */
+export const getAnalyticsConfig = async () => {
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists() && userDoc.data().analyticsConfig) {
+      return userDoc.data().analyticsConfig;
+    }
+
+    // Return default configuration if not set
+    return {
+      categoryPie: { visible: true, position: 0 },
+      trackablePie: { visible: true, position: 1 },
+      accountBalanceOverTime: { visible: true, position: 2 },
+      trendsOverTime: { visible: true, position: 3 },
+      currentBalances: { visible: true, position: 4 },
+    };
+  } catch (error) {
+    console.error('Error getting analytics config:', error);
+    // Return default configuration on error
+    return {
+      categoryPie: { visible: true, position: 0 },
+      trackablePie: { visible: true, position: 1 },
+      accountBalanceOverTime: { visible: true, position: 2 },
+      trendsOverTime: { visible: true, position: 3 },
+      currentBalances: { visible: true, position: 4 },
+    };
+  }
+};
+
+/**
+ * Listen for real-time analytics config changes
+ * @param {Function} onConfigChange - Callback when config changes
+ * @returns {Function} Unsubscribe function
+ */
+export const listenToAnalyticsConfig = (onConfigChange) => {
+  try {
+    const userId = getUserId();
+    if (!userId) {
+      console.warn('No user ID available for listening to analytics config');
+      return () => {};
+    }
+
+    const userDocRef = doc(db, 'users', userId);
+    
+    const unsubscribe = onSnapshot(userDocRef, (snap) => {
+      if (snap.exists() && snap.data().analyticsConfig) {
+        onConfigChange(snap.data().analyticsConfig);
+      } else {
+        // Use default config if not set
+        onConfigChange({
+          categoryPie: { visible: true, position: 0 },
+          trackablePie: { visible: true, position: 1 },
+          accountBalanceOverTime: { visible: true, position: 2 },
+          trendsOverTime: { visible: true, position: 3 },
+          currentBalances: { visible: true, position: 4 },
+        });
+      }
+    }, (error) => {
+      console.error('Error listening to analytics config:', error);
+    });
+
+    return unsubscribe;
+  } catch (error) {
+    console.error('Error setting up analytics config listener:', error);
+    return () => {};
   }
 };
