@@ -17,7 +17,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [verificationAttempts, setVerificationAttempts] = useState(0);
-  const [hasCredentials, setHasCredentials] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState(null); // null = not checked yet, true/false = checked
   const MAX_ATTEMPTS = 2;
 
   // Check if user has registered biometric credentials
@@ -129,7 +129,12 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
   };
 
   // If user has no biometric credentials setup, skip directly to app
-  if (!hasCredentials) {
+  if (hasCredentials === false) {
+    return null;
+  }
+
+  // If we haven't checked yet, show loading or nothing
+  if (hasCredentials === null) {
     return null;
   }
 
