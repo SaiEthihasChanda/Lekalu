@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, initializeAuth, getUserId } from '../fb/index.js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
+import { generateTrackerOccurrences } from '../utils/trackerOccurrences.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
@@ -326,6 +327,40 @@ export const useTrackables = () => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // Generate tracker occurrences if this trackable will be included in tracker
+      if (data.includeInTracker && data.frequency && data.startDate) {
+        try {
+          console.log('[addTrackable] Generating occurrences:', { startDate: data.startDate, frequency: data.frequency, interval: data.frequencyInterval });
+          const occurrences = generateTrackerOccurrences({
+            startDate: data.startDate,
+            frequency: data.frequency,
+            frequencyInterval: data.frequencyInterval || 1,
+          });
+
+          console.log(`[addTrackable] Generated ${occurrences.length} occurrences`);
+
+          // Create tracker document for each occurrence
+          for (const occurrenceDate of occurrences) {
+            const trackerData = {
+              trackableId: docRef.id,
+              occurrenceDate,
+              status: 'pending',
+              userId,
+              groupId: group?.id || null,
+              groupMemberId: group ? userId : null,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            await addDoc(collection(db, 'trackers'), trackerData);
+          }
+          console.log(`[addTrackable] Created ${occurrences.length} tracker documents`);
+        } catch (occErr) {
+          console.error('Error generating tracker occurrences:', occErr);
+          // Don't fail the trackable creation if occurrence generation fails
+        }
+      }
+
       return docRef.id;
     } catch (err) {
       console.error('Error adding trackable:', err);
@@ -345,6 +380,46 @@ export const useTrackables = () => {
         ...encryptedData,
         updatedAt: serverTimestamp(),
       });
+
+      // If frequency settings changed, regenerate trackers
+      if (data.includeInTracker && data.frequency && data.startDate) {
+        try {
+          // First, delete all existing trackers for this trackable
+          const existingTrackersQuery = query(
+            collection(db, 'trackers'),
+            where('trackableId', '==', id)
+          );
+          const existingTrackersSnapshot = await getDocs(existingTrackersQuery);
+          for (const trackerDoc of existingTrackersSnapshot.docs) {
+            await deleteDoc(doc(db, 'trackers', trackerDoc.id));
+          }
+
+          // Then generate new ones with updated frequency
+          const occurrences = generateTrackerOccurrences({
+            startDate: data.startDate,
+            frequency: data.frequency,
+            frequencyInterval: data.frequencyInterval || 1,
+          });
+
+          // Create tracker document for each occurrence
+          for (const occurrenceDate of occurrences) {
+            const trackerData = {
+              trackableId: id,
+              occurrenceDate,
+              status: 'pending',
+              userId,
+              groupId: group?.id || null,
+              groupMemberId: group ? userId : null,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            await addDoc(collection(db, 'trackers'), trackerData);
+          }
+        } catch (occErr) {
+          console.error('Error regenerating tracker occurrences:', occErr);
+          // Don't fail the trackable update if occurrence regeneration fails
+        }
+      }
     } catch (err) {
       console.error('Error updating trackable:', err);
       throw err;
@@ -723,7 +798,7 @@ export const useTrackers = () => {
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
       
-      // Remove client-side completedAt if provided - use server timestamp instead
+      // Remove client-side timestamps if provided - use server timestamp instead
       const dataWithoutTimestamps = { ...data };
       delete dataWithoutTimestamps.completedAt;
       
@@ -731,7 +806,7 @@ export const useTrackers = () => {
       
       const docRef = await addDoc(collection(db, 'trackers'), {
         ...encryptedData,
-        completedAt: data.isDone ? serverTimestamp() : null, // Set server timestamp if marked done
+        completedAt: data.status === 'completed' ? serverTimestamp() : null,
         userId,
         groupId: group?.id || null,
         groupMemberId: group ? userId : null,
@@ -751,7 +826,7 @@ export const useTrackers = () => {
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
       
-      // Remove client-side completedAt if provided - use server timestamp instead
+      // Remove client-side timestamps if provided - use server timestamp instead
       const dataWithoutTimestamps = { ...data };
       delete dataWithoutTimestamps.completedAt;
       
@@ -762,11 +837,10 @@ export const useTrackers = () => {
         updatedAt: serverTimestamp(),
       };
       
-      // If isDone is being set to true, update completedAt with server timestamp
-      if (data.isDone === true) {
+      // Handle status changes - set/clear completedAt timestamp
+      if (data.status === 'completed') {
         updateData.completedAt = serverTimestamp();
-      } else if (data.isDone === false) {
-        // If marked as not done, clear completedAt
+      } else {
         updateData.completedAt = null;
       }
       
@@ -776,7 +850,7 @@ export const useTrackers = () => {
       console.error('Error updating tracker:', err);
       throw err;
     }
-  }, []);
+  }, [group]);
 
   const deleteTracker = useCallback(async (id) => {
     try {

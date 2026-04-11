@@ -1,13 +1,19 @@
 import { useState } from 'react';
 import { Trash2, Edit2 } from 'lucide-react';
 import { formatAmount } from '../utils/analytics.js';
+import { formatFrequency } from '../utils/trackerOccurrences.js';
 import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
+import { format } from 'date-fns';
 
 export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [name, setName] = useState(trackable?.name || '');
   const [type, setType] = useState(trackable?.type || 'expense');
   const [includeInTracker, setIncludeInTracker] = useState(trackable?.includeInTracker || false);
   const [trackerAmount, setTrackerAmount] = useState(trackable?.trackerAmount?.toString() || '');
+  const [frequency, setFrequency] = useState(trackable?.frequency || 'monthly');
+  const [frequencyInterval, setFrequencyInterval] = useState(trackable?.frequencyInterval?.toString() || '1');
+  const [startDate, setStartDate] = useState(trackable?.startDate ? format(new Date(trackable.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+  const [showFrequencyOptions, setShowFrequencyOptions] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingData, setPendingData] = useState(null);
 
@@ -35,6 +41,13 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       data.trackerAmount = parseFloat(trackerAmount);
     }
 
+    // Include frequency settings if tracker is enabled
+    if (includeInTracker) {
+      data.frequency = frequency;
+      data.frequencyInterval = parseInt(frequencyInterval) || 1;
+      data.startDate = new Date(startDate).getTime();
+    }
+
     // Check if amount is suspiciously large (> 99 lakhs)
     if (includeInTracker && parseFloat(trackerAmount) > 9900000) {
       setPendingData(data);
@@ -48,6 +61,9 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
     setType('expense');
     setIncludeInTracker(false);
     setTrackerAmount('');
+    setFrequency('monthly');
+    setFrequencyInterval('1');
+    setStartDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
   const handleConfirmAmount = () => {
@@ -60,6 +76,9 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       setType('expense');
       setIncludeInTracker(false);
       setTrackerAmount('');
+      setFrequency('monthly');
+      setFrequencyInterval('1');
+      setStartDate(format(new Date(), 'yyyy-MM-dd'));
     }
   };
 
@@ -120,18 +139,77 @@ export const TrackableForm = ({ trackable, accounts, onSubmit, isLoading = false
       </div>
 
       {includeInTracker && (
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Tracker Amount *</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            value={trackerAmount}
-            onChange={(e) => setTrackerAmount(e.target.value)}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-accent"
-            placeholder="0.00"
-          />
-        </div>
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Tracker Amount *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={trackerAmount}
+              onChange={(e) => setTrackerAmount(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-accent"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Frequency</label>
+            <div className="space-y-2">
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="custom">Custom Interval</option>
+              </select>
+
+              {frequency === 'custom' && (
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={frequencyInterval}
+                    onChange={(e) => setFrequencyInterval(e.target.value)}
+                    className="w-20 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-accent"
+                    placeholder="1"
+                  />
+                  <select
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value)}
+                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
+                  >
+                    <option value="custom" disabled>Select type...</option>
+                    <option value="daily">Days</option>
+                    <option value="weekly">Weeks</option>
+                    <option value="monthly">Months</option>
+                    <option value="yearly">Years</option>
+                  </select>
+                </div>
+              )}
+
+              {frequency !== 'custom' && (
+                <p className="text-xs text-gray-400">
+                  {formatFrequency(frequency, 1)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-accent"
+            />
+          </div>
+        </>
       )}
 
       <div className="flex gap-2">

@@ -18,6 +18,9 @@
  * @property {'income' | 'expense'} type
  * @property {boolean} includeInTracker
  * @property {number} [trackerAmount]
+ * @property {'daily' | 'weekly' | 'monthly' | 'yearly'} [frequency]
+ * @property {number} [frequencyInterval] - e.g., 2 for "every 2 days"
+ * @property {number} [startDate] - timestamp when recurring starts
  * @property {number} createdAt
  * @property {number} updatedAt
  */
@@ -39,9 +42,8 @@
  * @typedef {Object} Tracker
  * @property {string} id
  * @property {string} trackableId
- * @property {number} month
- * @property {number} year
- * @property {boolean} isDone
+ * @property {number} occurrenceDate - timestamp of occurrence
+ * @property {'pending' | 'completed' | 'skipped'} status
  * @property {number} [completedAt]
  * @property {number} createdAt
  * @property {number} updatedAt
