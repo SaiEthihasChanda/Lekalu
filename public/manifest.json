@@ -1,0 +1,74 @@
+{
+  "name": "Lekalu - Personal Finance, Simplified",
+  "short_name": "Lekalu",
+  "description": "A modern expense tracking app with a trading app-like UI",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-or-landscape",
+  "theme_color": "#0F172A",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/lekalu-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/lekalu-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/lekalu-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/lekalu-logo.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/lekalu-logo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Add Activity",
+      "short_name": "Add Activity",
+      "description": "Quickly add a new transaction",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/lekalu-logo.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "View Analytics",
+      "short_name": "Analytics",
+      "description": "Check your financial analytics",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "/lekalu-logo.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
