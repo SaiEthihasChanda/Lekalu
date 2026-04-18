@@ -34,8 +34,7 @@ export const MobileTopBar = ({ isMenuOpen, onMenuToggle }) => {
 
       {/* Logo - Center */}
       <div className="flex items-center gap-2">
-        <img src="/lekalu-logo-new.png" alt="Lekalu" className="w-8 h-8" />
-        <span className="text-sm font-bold text-white">Lekalu</span>
+        <img src="/lekalu-logo.png" alt="Lekalu" className="w-16 h-16" />
       </div>
 
       {/* Time - Right */}

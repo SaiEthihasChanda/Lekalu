@@ -96,10 +96,8 @@ export const RegisterPage = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <img src="/lekalu-logo-new.png" alt="Lekalu" className="w-16 h-16" />
+            <img src="/lekalu-logo.png" alt="Lekalu" className="w-28 h-28" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Lekalu</h1>
-          <p className="text-gray-400">Personal Finance, Simplified</p>
         </div>
 
         {/* Register Card */}

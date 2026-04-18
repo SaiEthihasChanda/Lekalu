@@ -1,13 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useActivities, useTrackables, useSources } from '../hooks/index.js';
-import { calculateAnalytics, formatAmount, calculateAccountBalance } from '../utils/analytics.js';
-import { TrendingUp, PieChart, Wallet } from 'lucide-react';
+import { calculateAnalytics, formatAmount, calculateAccountBalance, calculateNetWorth, generateDailyIncomeExpenseData } from '../utils/analytics.js';
+import { TrendingUp, Wallet, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
 import {
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   BarChart,
   Bar,
   XAxis,
@@ -16,10 +13,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from 'recharts';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOfWeek, eachWeekOfInterval, startOfYear, endOfYear, eachMonthOfInterval } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOfWeek, startOfYear, endOfYear, eachMonthOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 /**
  * @typedef {Object} AnalyticsFilter
@@ -113,36 +108,6 @@ export const AnalyticsPage = () => {
     return calculateAnalytics(activities, trackablesMap, filter);
   }, [activities, trackablesMap, filter]);
 
-  // Prepare data for pie charts
-  const categoryPieData = useMemo(() => {
-    return [
-      { name: 'Income', value: Math.abs(analytics.totalIncome), color: '#10B981' },
-      { name: 'Expense', value: Math.abs(analytics.totalExpense), color: '#EF4444' },
-    ].filter(item => item.value > 0);
-  }, [analytics.totalIncome, analytics.totalExpense]);
-
-  const trackablePieData = useMemo(() => {
-    return Object.entries(analytics.byCategory)
-      .map(([category, amount]) => ({
-        name: category,
-        value: Math.abs(amount),
-      }))
-      .filter(item => item.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [analytics.byCategory]);
-
-  const accountBarData = useMemo(() => {
-    return Object.entries(analytics.byAccount).map(([accountId, data]) => {
-      const account = accounts.find(a => a.id === accountId);
-      return {
-        name: account?.cardName || 'Unknown',
-        income: data.income,
-        expense: data.expense,
-        net: data.income - data.expense,
-      };
-    });
-  }, [analytics.byAccount, accounts]);
-
   // Bank account balances
   const accountBalancesData = useMemo(() => {
     return accounts.map(account => ({
@@ -151,159 +116,22 @@ export const AnalyticsPage = () => {
     })).sort((a, b) => b.balance - a.balance);
   }, [accounts, activities]);
 
-  // Bank account balance over time
-  const accountBalanceOverTime = useMemo(() => {
-    if (!activities.length || !accounts.length) return [];
+  // Calculate total net worth (credit cards treated as debt)
+  const totalNetWorth = useMemo(() => {
+    return calculateNetWorth(accounts, activities);
+  }, [accounts, activities]);
 
-    let dateRange = [];
-    const now = new Date();
+  // Prepare daily/monthly income vs expense data for bar chart
+  const dailyIncomeExpenseData = useMemo(() => {
+    return generateDailyIncomeExpenseData(
+      activities,
+      timeRange,
+      startDate ? new Date(startDate).getTime() : undefined,
+      endDate ? new Date(endDate).getTime() : undefined
+    );
+  }, [activities, timeRange, startDate, endDate]);
 
-    if (timeRange === 'today') {
-      dateRange = [now];
-    } else if (timeRange === 'week') {
-      dateRange = eachDayOfInterval({
-        start: startOfWeek(now),
-        end: endOfWeek(now),
-      });
-    } else if (timeRange === 'month') {
-      dateRange = eachDayOfInterval({
-        start: startOfMonth(now),
-        end: endOfMonth(now),
-      });
-    } else if (timeRange === 'year') {
-      dateRange = eachMonthOfInterval({
-        start: startOfYear(now),
-        end: endOfYear(now),
-      });
-    }
-
-    const dataMap = new Map();
-    const accountColors = {};
-    
-    // Assign colors to each account
-    accounts.forEach((account, idx) => {
-      accountColors[account.id] = COLORS[idx % COLORS.length];
-    });
-
-    // Initialize data points
-    dateRange.forEach(date => {
-      const key = timeRange === 'year' ? format(date, 'MMM') : format(date, 'MMM dd');
-      if (!dataMap.has(key)) {
-        const dataPoint = { name: key };
-        // Initialize balances for each account
-        accounts.forEach(account => {
-          dataPoint[account.id] = account.openingBalance;
-        });
-        dataMap.set(key, dataPoint);
-      }
-    });
-
-    // Update balances based on activities
-    const sortedActivities = [...activities].sort((a, b) => a.date - b.date);
-    
-    sortedActivities.forEach(activity => {
-      const actDate = new Date(activity.date);
-      const key = timeRange === 'year' ? format(actDate, 'MMM') : format(actDate, 'MMM dd');
-
-      if (activity.accountId && dataMap.has(key)) {
-        // Update all data points on and after this date
-        let incremented = false;
-        for (const [k, dataPoint] of dataMap) {
-          if (!incremented) {
-            if (k === key) incremented = true;
-            else continue;
-          }
-          
-          if (!dataPoint[activity.accountId]) {
-            dataPoint[activity.accountId] = accounts.find(a => a.id === activity.accountId)?.openingBalance || 0;
-          }
-
-          if (activity.type === 'income') {
-            dataPoint[activity.accountId] += activity.amount;
-          } else if (activity.type === 'expense') {
-            dataPoint[activity.accountId] -= activity.amount;
-          }
-        }
-      }
-    });
-
-    return Array.from(dataMap.values()).map(dataPoint => {
-      // Convert back to original for easier use
-      return dataPoint;
-    });
-  }, [activities, accounts, timeRange]);
-
-  // Prepare date analytics data (line chart)
-  const dateAnalyticsData = useMemo(() => {
-    if (!activities.length) return [];
-
-    let dateRange = [];
-    const now = new Date();
-
-    if (timeRange === 'today') {
-      dateRange = [now];
-    } else if (timeRange === 'week') {
-      dateRange = eachDayOfInterval({
-        start: startOfWeek(now),
-        end: endOfWeek(now),
-      });
-    } else if (timeRange === 'month') {
-      dateRange = eachDayOfInterval({
-        start: startOfMonth(now),
-        end: endOfMonth(now),
-      });
-    } else if (timeRange === 'year') {
-      dateRange = eachMonthOfInterval({
-        start: startOfYear(now),
-        end: endOfYear(now),
-      });
-    }
-
-    const dataMap = new Map();
-    dateRange.forEach(date => {
-      const key = timeRange === 'year' ? format(date, 'MMM') : format(date, 'MMM dd');
-      if (!dataMap.has(key)) {
-        dataMap.set(key, { name: key, income: 0, expense: 0, net: 0 });
-      }
-    });
-
-    activities.forEach(activity => {
-      const actDate = new Date(activity.date);
-      const key = timeRange === 'year' ? format(actDate, 'MMM') : format(actDate, 'MMM dd');
-
-      if (dataMap.has(key)) {
-        const data = dataMap.get(key);
-        if (activity.type === 'income') {
-          data.income += activity.amount;
-        } else if (activity.type === 'expense') {
-          data.expense += activity.amount;
-        }
-        data.net = data.income - data.expense;
-      }
-    });
-
-    return Array.from(dataMap.values());
-  }, [activities, timeRange]);
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-primary border border-gray-600 rounded p-2 text-sm">
-          <p className="text-white font-medium">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} style={{ color: entry.color }}>
-              {entry.name}: {formatAmount(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const categoryEntries = Object.entries(analytics.byCategory).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
-  const accountEntries = Object.entries(analytics.byAccount);
-
+  
   // Helper function to check if a visualization should be shown
   const isVisualizationVisible = (vizId) => {
     // Default to true if config not loaded yet (show all)
@@ -316,10 +144,8 @@ export const AnalyticsPage = () => {
   // Get sorted chart list based on config positions
   const getSortedCharts = () => {
     const charts = [
-      { id: 'categoryPie', label: 'Income vs Expense' },
-      { id: 'trackablePie', label: 'By Trackable' },
-      { id: 'accountBalanceOverTime', label: 'Account Balances Over Time' },
-      { id: 'trendsOverTime', label: 'Trends Over Time' },
+      { id: 'netWorth', label: 'Net Worth' },
+      { id: 'dailyIncomeExpense', label: 'Daily Income vs Expense' },
       { id: 'currentBalances', label: 'Current Bank Balances' },
     ];
 
@@ -336,128 +162,54 @@ export const AnalyticsPage = () => {
   // Helper function to render each chart type
   const renderChart = (chartId) => {
     switch(chartId) {
-      case 'categoryPie':
+      case 'netWorth':
         return (
           <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
             <div className="flex items-center gap-2 mb-4">
-              <PieChart size={20} className="text-accent" />
-              <h2 className="text-base md:text-lg font-semibold text-white truncate">Income vs Expense</h2>
+              <DollarSign size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Total Net Worth</h2>
             </div>
-            {categoryPieData.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No data available</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsPieChart>
-                  <Pie
-                    data={categoryPieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${formatAmount(value)}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {categoryPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatAmount(value)} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        );
-      
-      case 'trackablePie':
-        return (
-          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <PieChart size={20} className="text-accent" />
-              <h2 className="text-base md:text-lg font-semibold text-white truncate">By Trackable</h2>
+            <div className="flex flex-col items-center justify-center py-6 md:py-8">
+              <p className={`text-2xl md:text-5xl font-bold break-words text-center ${totalNetWorth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatAmount(totalNetWorth)}
+              </p>
+              <p className="text-gray-400 mt-2 text-xs md:text-base text-center">
+                {accounts.length > 0 ? `Combined from ${accounts.length} account${accounts.length !== 1 ? 's' : ''}` : 'No accounts added'}
+              </p>
             </div>
-            {trackablePieData.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No data available</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={250}>
-                <RechartsPieChart>
-                  <Pie
-                    data={trackablePieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, value }) => `${name}: ${formatAmount(value)}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {trackablePieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatAmount(value)} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            )}
           </div>
         );
 
-      case 'accountBalanceOverTime':
+      case 'dailyIncomeExpense':
         return (
           <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={20} className="text-accent" />
-              <h2 className="text-base md:text-lg font-semibold text-white truncate">Account Balances Over Time</h2>
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">
+                {timeRange === 'year' ? 'Monthly' : 'Daily'} Income vs Expense
+              </h2>
             </div>
-            {accountBalanceOverTime.length === 0 || accounts.length === 0 ? (
+            {dailyIncomeExpenseData.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No data available</p>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={accountBalanceOverTime}>
+                <BarChart data={dailyIncomeExpenseData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="name" stroke="#9CA3AF" />
                   <YAxis stroke="#9CA3AF" />
-                  <Tooltip content={<CustomTooltip />} formatter={(value) => formatAmount(value)} />
+                  <Tooltip 
+                    formatter={(value) => formatAmount(value)}
+                    contentStyle={{
+                      backgroundColor: '#0F172A',
+                      border: '1px solid #4B5563',
+                      borderRadius: '8px',
+                    }}
+                    labelStyle={{ color: '#fff' }}
+                  />
                   <Legend />
-                  {accounts.map((account, idx) => (
-                    <Line
-                      key={account.id}
-                      type="monotone"
-                      dataKey={account.id}
-                      stroke={COLORS[idx % COLORS.length]}
-                      name={account.cardName}
-                      strokeWidth={2}
-                      dot={{ fill: COLORS[idx % COLORS.length], r: 4 }}
-                      activeDot={{ r: 6 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        );
-
-      case 'trendsOverTime':
-        return (
-          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={20} className="text-accent" />
-              <h2 className="text-base md:text-lg font-semibold text-white truncate">Trends Over Time</h2>
-            </div>
-            {dateAnalyticsData.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No data available</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={dateAnalyticsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="name" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Line type="monotone" dataKey="income" stroke="#10B981" name="Income" strokeWidth={2} dot={{ fill: '#10B981' }} />
-                  <Line type="monotone" dataKey="expense" stroke="#EF4444" name="Expense" strokeWidth={2} dot={{ fill: '#EF4444' }} />
-                  <Line type="monotone" dataKey="net" stroke="#3B82F6" name="Net" strokeWidth={2} dot={{ fill: '#3B82F6' }} />
-                </LineChart>
+                  <Bar dataKey="income" fill="#10B981" name="Income" />
+                  <Bar dataKey="expense" fill="#EF4444" name="Expense" />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>

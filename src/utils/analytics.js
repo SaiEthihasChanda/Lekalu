@@ -1,4 +1,4 @@
-import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, format } from 'date-fns';
+import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, format, eachDayOfInterval, eachMonthOfInterval } from 'date-fns';
 
 export const getDateRange = (filter) => {
   const now = new Date();
@@ -126,4 +126,115 @@ export const calculateAccountBalance = (accountId, openingBalance = 0, activitie
   });
   
   return balance;
+};
+
+/**
+ * Calculate total net worth across all accounts
+ * Credit cards are treated as negative balances (debt)
+ * @param {Array} accounts - Array of all accounts
+ * @param {Array} activities - Array of all activities
+ * @returns {number} Total net worth
+ */
+export const calculateNetWorth = (accounts = [], activities = []) => {
+  let totalNetWorth = 0;
+
+  accounts.forEach(account => {
+    const balance = calculateAccountBalance(account.id, account.openingBalance || 0, activities);
+    
+    // Simply add all balances - credit cards are already negative from calculateAccountBalance
+    totalNetWorth += balance;
+  });
+
+  return totalNetWorth;
+};
+
+/**
+ * Generate daily/monthly income vs expense data for bar chart
+ * @param {Array} activities - Array of all activities
+ * @param {string} timeRange - Time range: 'today', 'week', 'month', 'year', 'custom'
+ * @param {number} startDate - Start date timestamp
+ * @param {number} endDate - End date timestamp
+ * @returns {Array} Data for bar chart with income and expense for each day/month
+ */
+export const generateDailyIncomeExpenseData = (activities = [], timeRange = 'month', startDate = null, endDate = null) => {
+  const { start, end } = getDateRange({ timeRange, startDate, endDate });
+  
+  // Filter activities to the date range
+  const filtered = activities.filter(a => 
+    a.date >= start && a.date <= end && a.type !== 'transfer'
+  );
+
+  let dateRange = [];
+  const now = new Date();
+
+  if (timeRange === 'today') {
+    dateRange = [now];
+  } else if (timeRange === 'week') {
+    dateRange = eachDayOfInterval({
+      start: startOfWeek(now, { weekStartsOn: 0 }),
+      end: endOfWeek(now, { weekStartsOn: 0 }),
+    });
+  } else if (timeRange === 'month') {
+    dateRange = eachDayOfInterval({
+      start: startOfMonth(now),
+      end: endOfMonth(now),
+    });
+  } else if (timeRange === 'year') {
+    dateRange = eachMonthOfInterval({
+      start: startOfYear(now),
+      end: endOfYear(now),
+    });
+  } else if (timeRange === 'custom') {
+    const startDateObj = new Date(startDate);
+    const endDateObj = new Date(endDate);
+    
+    // Determine if we should use days or months based on date range
+    const daysDiff = Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff <= 31) {
+      // Use daily intervals for month or less
+      dateRange = eachDayOfInterval({
+        start: startOfDay(startDateObj),
+        end: endOfDay(endDateObj),
+      });
+    } else {
+      // Use monthly intervals for longer periods
+      dateRange = eachMonthOfInterval({
+        start: startOfMonth(startDateObj),
+        end: endOfMonth(endDateObj),
+      });
+    }
+  }
+
+  const dataMap = new Map();
+  
+  // Initialize all dates with 0 values
+  dateRange.forEach(date => {
+    const key = timeRange === 'year' || (timeRange === 'custom' && dateRange.some(d => format(d, 'yyyy') !== format(dateRange[0], 'yyyy'))) 
+      ? format(date, 'MMM') 
+      : format(date, 'MMM dd');
+    
+    if (!dataMap.has(key)) {
+      dataMap.set(key, { name: key, income: 0, expense: 0 });
+    }
+  });
+
+  // Populate data from activities
+  filtered.forEach(activity => {
+    const actDate = new Date(activity.date);
+    const key = timeRange === 'year' || (timeRange === 'custom' && dateRange.some(d => format(d, 'yyyy') !== format(dateRange[0], 'yyyy')))
+      ? format(actDate, 'MMM')
+      : format(actDate, 'MMM dd');
+
+    if (dataMap.has(key)) {
+      const data = dataMap.get(key);
+      if (activity.type === 'income') {
+        data.income += activity.amount;
+      } else if (activity.type === 'expense') {
+        data.expense += activity.amount;
+      }
+    }
+  });
+
+  return Array.from(dataMap.values());
 };
