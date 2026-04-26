@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useActivities, useTrackables, useSources } from '../hooks/index.js';
-import { calculateAnalytics, formatAmount, calculateAccountBalance, calculateNetWorth, generateDailyIncomeExpenseData } from '../utils/analytics.js';
-import { TrendingUp, Wallet, DollarSign } from 'lucide-react';
+import { calculateAnalytics, formatAmount, calculateAccountBalance, generateDailyIncomeExpenseData, getDateRange } from '../utils/analytics.js';
+import { TrendingUp, Wallet, DollarSign, ListOrdered } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
+import { ActivityCard } from '../components/ActivityCard.jsx';
 import {
   BarChart,
   Bar,
@@ -14,7 +15,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOfWeek, startOfYear, endOfYear, eachMonthOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 /**
  * @typedef {Object} AnalyticsFilter
@@ -26,15 +26,58 @@ import { startOfMonth, endOfMonth, eachDayOfInterval, format, startOfWeek, endOf
  * @property {string} [userId] - User ID filter (for groups)
  */
 
-// Chart colors
-const COLORS = ['#10B981', '#EF4444', '#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
-const CATEGORY_COLORS = {
-  income: '#10B981',
-  expense: '#EF4444',
-  transfer: '#3B82F6',
+const MASTER_TABS = [
+  { id: 'all', label: 'All Data' },
+  { id: 'income', label: 'Income' },
+  { id: 'expenses', label: 'Expenses' },
+];
+
+const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
+
+const isTransferType = (type) => typeof type === 'string' && TRANSFER_TYPES.has(type.trim().toLowerCase());
+
+const getSourceType = (account) => {
+  if (!account?.sourceType) return 'none';
+  return String(account.sourceType).toLowerCase();
+};
+
+const shouldIncludeAccountInMasterView = (account, view) => {
+  if (view === 'all') return true;
+
+  const sourceType = getSourceType(account);
+  if (view === 'income') return sourceType === 'debit';
+  if (view === 'expenses') return sourceType === 'credit';
+  return true;
+};
+
+const shouldIncludeTrackableInMasterView = (trackable, view) => {
+  if (view === 'all') return true;
+  if (!trackable?.type) return false;
+  return trackable.type === (view === 'income' ? 'income' : 'expense');
+};
+
+const getAccountLabel = (account) => account?.cardName || account?.name || 'Unnamed Account';
+
+const getDefaultConfigValue = (id, field) => {
+  const defaults = {
+    masterTotal: { visible: true },
+    masterBalances: { visible: true },
+    masterTrackables: { visible: true },
+    filteredSummary: { visible: true },
+    filteredTransactions: { visible: true },
+    filteredCharts: { visible: true },
+    stickyMobileTabs: { enabled: true },
+    transactionScrollThreshold: { value: 10 },
+    trendsOverTime: { visible: true, position: 0 },
+    currentBalances: { visible: true, position: 1 },
+  };
+
+  return defaults[id]?.[field];
 };
 
 export const AnalyticsPage = () => {
+  const [activeTab, setActiveTab] = useState('master'); // master | filtered
+  const [masterView, setMasterView] = useState('all'); // all | income | expenses
   const [timeRange, setTimeRange] = useState('month');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedTrackableId, setSelectedTrackableId] = useState('');
@@ -43,7 +86,6 @@ export const AnalyticsPage = () => {
   const [endDate, setEndDate] = useState('');
   const [uniqueUsers, setUniqueUsers] = useState([]);
   const [analyticsConfig, setAnalyticsConfig] = useState(null);
-  const [configLoading, setConfigLoading] = useState(true);
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
@@ -54,7 +96,6 @@ export const AnalyticsPage = () => {
   useEffect(() => {
     const unsubscribe = listenToAnalyticsConfig((config) => {
       setAnalyticsConfig(config || {});
-      setConfigLoading(false);
     });
 
     return () => unsubscribe();
@@ -104,32 +145,114 @@ export const AnalyticsPage = () => {
   };
 
   const trackablesMap = new Map(trackables.map(t => [t.id, t]));
+  const accountsMap = new Map(accounts.map((a) => [a.id, a]));
+
+  const masterAccounts = useMemo(() => {
+    return accounts.filter((account) => shouldIncludeAccountInMasterView(account, masterView));
+  }, [accounts, masterView]);
+
+  const masterAccountBalances = useMemo(() => {
+    return masterAccounts
+      .map((account) => ({
+        id: account.id,
+        name: getAccountLabel(account),
+        balance: calculateAccountBalance(account.id, account.openingBalance || 0, activities),
+      }))
+      .sort((a, b) => b.balance - a.balance);
+  }, [masterAccounts, activities]);
+
+  const masterTotal = useMemo(() => {
+    return masterAccountBalances.reduce((sum, account) => sum + account.balance, 0);
+  }, [masterAccountBalances]);
+
+  const masterTrackableTotals = useMemo(() => {
+    const totals = new Map();
+
+    activities.forEach((activity) => {
+      if (!activity || isTransferType(activity.type) || !activity.trackableId) {
+        return;
+      }
+
+      const trackable = trackablesMap.get(activity.trackableId);
+      if (!trackable || !shouldIncludeTrackableInMasterView(trackable, masterView)) {
+        return;
+      }
+
+      const current = totals.get(trackable.id) || {
+        id: trackable.id,
+        name: trackable.name || 'Unnamed Trackable',
+        type: trackable.type || activity.type,
+        total: 0,
+      };
+
+      current.total += Number(activity.amount) || 0;
+      totals.set(trackable.id, current);
+    });
+
+    return Array.from(totals.values()).sort((a, b) => b.total - a.total);
+  }, [activities, trackablesMap, masterView]);
+
+  const filteredTransactions = useMemo(() => {
+    const { start, end } = getDateRange(filter);
+
+    return [...activities]
+      .filter((activity) => {
+        if (!activity || activity.date == null) return false;
+
+        const inDateRange = activity.date >= start && activity.date <= end;
+        if (!inDateRange) return false;
+
+        if (filter.userId && activity.userId !== filter.userId) return false;
+        if (filter.trackableId && activity.trackableId !== filter.trackableId) return false;
+
+        if (!filter.accountId) return true;
+
+        if (isTransferType(activity.type)) {
+          return [
+            activity.fromAccountId,
+            activity.toAccountId,
+            activity.fromSourceId,
+            activity.toSourceId,
+          ].includes(filter.accountId);
+        }
+
+        return activity.accountId === filter.accountId || activity.sourceId === filter.accountId;
+      })
+      .sort((a, b) => (b.date || 0) - (a.date || 0));
+  }, [activities, filter]);
+
   const analytics = useMemo(() => {
     return calculateAnalytics(activities, trackablesMap, filter);
   }, [activities, trackablesMap, filter]);
 
-  // Bank account balances
-  const accountBalancesData = useMemo(() => {
-    return accounts.map(account => ({
-      name: account.cardName,
-      balance: calculateAccountBalance(account.id, account.openingBalance, activities),
-    })).sort((a, b) => b.balance - a.balance);
-  }, [accounts, activities]);
-
-  // Calculate total net worth (credit cards treated as debt)
-  const totalNetWorth = useMemo(() => {
-    return calculateNetWorth(accounts, activities);
-  }, [accounts, activities]);
+  const filteredAccountBalancesData = useMemo(() => {
+    return accounts
+      .map((account) => ({
+        id: account.id,
+        name: getAccountLabel(account),
+        balance: calculateAccountBalance(account.id, account.openingBalance || 0, filteredTransactions),
+      }))
+      .filter((account) => !selectedAccountId || account.id === selectedAccountId)
+      .sort((a, b) => b.balance - a.balance);
+  }, [accounts, filteredTransactions, selectedAccountId]);
 
   // Prepare daily/monthly income vs expense data for bar chart
   const dailyIncomeExpenseData = useMemo(() => {
     return generateDailyIncomeExpenseData(
-      activities,
+      filteredTransactions,
       timeRange,
       startDate ? new Date(startDate).getTime() : undefined,
       endDate ? new Date(endDate).getTime() : undefined
     );
-  }, [activities, timeRange, startDate, endDate]);
+  }, [filteredTransactions, timeRange, startDate, endDate]);
+
+  const isLayoutSectionVisible = (sectionId) => {
+    if (!analyticsConfig) return getDefaultConfigValue(sectionId, 'visible') ?? true;
+    return analyticsConfig?.[sectionId]?.visible ?? getDefaultConfigValue(sectionId, 'visible') ?? true;
+  };
+
+  const stickyMobileTabsEnabled = analyticsConfig?.stickyMobileTabs?.enabled ?? getDefaultConfigValue('stickyMobileTabs', 'enabled') ?? true;
+  const transactionScrollThreshold = analyticsConfig?.transactionScrollThreshold?.value ?? getDefaultConfigValue('transactionScrollThreshold', 'value') ?? 10;
 
   
   // Helper function to check if a visualization should be shown
@@ -138,48 +261,28 @@ export const AnalyticsPage = () => {
     if (!analyticsConfig) return true;
     // Check if visualization is explicitly set to false
     const vizConfig = analyticsConfig[vizId];
-    return vizConfig?.visible !== false;
+    const visibleDefault = getDefaultConfigValue(vizId, 'visible');
+    return vizConfig?.visible ?? visibleDefault ?? true;
   };
 
-  // Get sorted chart list based on config positions
-  const getSortedCharts = () => {
+  const sortedCharts = useMemo(() => {
     const charts = [
-      { id: 'netWorth', label: 'Net Worth' },
-      { id: 'dailyIncomeExpense', label: 'Daily Income vs Expense' },
-      { id: 'currentBalances', label: 'Current Bank Balances' },
+      { id: 'dailyIncomeExpense', configId: 'trendsOverTime', label: 'Daily Income vs Expense' },
+      { id: 'currentBalances', configId: 'currentBalances', label: 'Current Bank Balances' },
     ];
 
-    // Sort by position in config
-    return charts.sort((a, b) => {
-      const posA = analyticsConfig?.[a.id]?.position ?? 999;
-      const posB = analyticsConfig?.[b.id]?.position ?? 999;
-      return posA - posB;
-    }).filter(chart => isVisualizationVisible(chart.id));
-  };
-
-  const sortedCharts = useMemo(() => getSortedCharts(), [analyticsConfig]);
+    return charts
+      .filter((chart) => isVisualizationVisible(chart.configId))
+      .sort((a, b) => {
+        const posA = analyticsConfig?.[a.configId]?.position ?? getDefaultConfigValue(a.configId, 'position') ?? 999;
+        const posB = analyticsConfig?.[b.configId]?.position ?? getDefaultConfigValue(b.configId, 'position') ?? 999;
+        return posA - posB;
+      });
+  }, [analyticsConfig]);
 
   // Helper function to render each chart type
   const renderChart = (chartId) => {
     switch(chartId) {
-      case 'netWorth':
-        return (
-          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <DollarSign size={20} className="text-accent" />
-              <h2 className="text-base md:text-lg font-semibold text-white truncate">Total Net Worth</h2>
-            </div>
-            <div className="flex flex-col items-center justify-center py-6 md:py-8">
-              <p className={`text-2xl md:text-5xl font-bold break-words text-center ${totalNetWorth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {formatAmount(totalNetWorth)}
-              </p>
-              <p className="text-gray-400 mt-2 text-xs md:text-base text-center">
-                {accounts.length > 0 ? `Combined from ${accounts.length} account${accounts.length !== 1 ? 's' : ''}` : 'No accounts added'}
-              </p>
-            </div>
-          </div>
-        );
-
       case 'dailyIncomeExpense':
         return (
           <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
@@ -222,11 +325,11 @@ export const AnalyticsPage = () => {
               <Wallet size={20} className="text-accent" />
               <h2 className="text-base md:text-lg font-semibold text-white truncate">Current Bank Balances</h2>
             </div>
-            {accountBalancesData.length === 0 ? (
+            {filteredAccountBalancesData.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No bank accounts added</p>
             ) : (
               <div className="space-y-2 md:space-y-3">
-                {accountBalancesData.map((account, index) => (
+                {filteredAccountBalancesData.map((account, index) => (
                   <div key={index} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
                     <div>
                       <p className="text-white font-medium text-sm md:text-base truncate">{account.name}</p>
@@ -255,136 +358,291 @@ export const AnalyticsPage = () => {
         <p className="text-sm md:text-base text-gray-400">Analyze your spending patterns</p>
       </div>
 
-      {/* Filters */}
-      <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
-        <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4">Filters</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4">
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
-            >
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
+      {/* Main Tabs */}
+      <div className={`${stickyMobileTabsEnabled ? 'sticky top-0 z-20 bg-primary/95 backdrop-blur-sm py-2 md:static md:bg-transparent md:backdrop-blur-none md:py-0' : 'py-2 md:py-0'}`}>
+        <div className="grid grid-cols-2 gap-1 bg-secondary border border-gray-700 rounded-xl p-1 mb-4 md:mb-6">
+        <button
+          onClick={() => setActiveTab('master')}
+          className={`w-full px-3 md:px-4 py-2.5 rounded-lg font-semibold text-sm md:text-base transition-colors ${
+            activeTab === 'master'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          Master
+        </button>
+        <button
+          onClick={() => setActiveTab('filtered')}
+          className={`w-full px-3 md:px-4 py-2.5 rounded-lg font-semibold text-sm md:text-base transition-colors ${
+            activeTab === 'filtered'
+              ? 'bg-accent text-white shadow-sm'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          Filtered
+        </button>
+        </div>
+      </div>
 
-          {timeRange === 'custom' && (
-            <>
-              <div>
-                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
-                />
-              </div>
-              <div>
-                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
-                />
-              </div>
-            </>
-          )}
-
-          {group && uniqueUsers.length > 0 && (
-            <div>
-              <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">User</label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+      {activeTab === 'master' && (
+        <>
+          {/* Master Sub Tabs */}
+          <div className={`${stickyMobileTabsEnabled ? 'sticky top-[72px] z-10 bg-primary/95 backdrop-blur-sm py-2 md:static md:bg-transparent md:backdrop-blur-none md:py-0' : 'py-2 md:py-0'}`}>
+            <div className="grid grid-cols-3 gap-1 bg-secondary border border-gray-700 rounded-xl p-1 mb-4 md:mb-8">
+            {MASTER_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMasterView(tab.id)}
+                className={`w-full px-2 md:px-4 py-2.5 rounded-lg font-semibold text-xs md:text-sm transition-colors ${
+                  masterView === tab.id
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
               >
-                <option value="">All Users</option>
-                {uniqueUsers.map(user => (
-                  <option key={user.userId} value={user.userId}>
-                    {user.email}
-                  </option>
-                ))}
-              </select>
+                {tab.label}
+              </button>
+            ))}
             </div>
+          </div>
+
+          {/* Master Total */}
+          {isLayoutSectionVisible('masterTotal') && (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <DollarSign size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Total</h2>
+            </div>
+            <div className="flex flex-col items-center justify-center py-6 md:py-8">
+              <p className={`text-2xl md:text-5xl font-bold break-words text-center ${masterTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatAmount(masterTotal)}
+              </p>
+              <p className="text-gray-400 mt-2 text-xs md:text-base text-center">
+                {masterAccounts.length > 0
+                  ? `${masterAccounts.length} account${masterAccounts.length !== 1 ? 's' : ''} included`
+                  : 'No accounts in this view'}
+              </p>
+            </div>
+          </div>
           )}
 
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
-            >
-              <option value="">All Accounts</option>
-              {accounts.map(acc => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.cardName}
-                </option>
-              ))}
-            </select>
+          {/* Master Bank Balances */}
+          {isLayoutSectionVisible('masterBalances') && (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Current Bank Balances</h2>
+            </div>
+            {masterAccountBalances.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No bank accounts for this view</p>
+            ) : (
+              <div className="space-y-2 md:space-y-3">
+                {masterAccountBalances.map((account) => (
+                  <div key={account.id} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
+                    <p className="text-white font-medium text-sm md:text-base truncate">{account.name}</p>
+                    <p className={`text-base md:text-lg font-bold ${account.balance >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
+                      {formatAmount(account.balance)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          )}
+
+          {/* Master Per Trackable Totals */}
+          {isLayoutSectionVisible('masterTrackables') && (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Per Trackable Totals</h2>
+            </div>
+            {masterTrackableTotals.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No trackable activity for this view</p>
+            ) : (
+              <div className="space-y-2 md:space-y-3">
+                {masterTrackableTotals.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-2 md:p-3 bg-primary rounded-lg border border-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-white font-medium text-sm md:text-base truncate">{item.name}</p>
+                      <p className="text-xs text-gray-400 capitalize">{item.type || 'unknown'}</p>
+                    </div>
+                    <p className={`text-base md:text-lg font-bold ${item.type === 'expense' ? 'text-red-400' : 'text-green-400'} truncate`}>
+                      {formatAmount(item.total)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'filtered' && (
+        <>
+          {/* Filters */}
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
+            <h2 className="text-sm md:text-lg font-semibold text-white mb-3 md:mb-4">Filters</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4">
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Time Range</label>
+                <select
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                >
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              {timeRange === 'custom' && (
+                <>
+                  <div>
+                    <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">End Date</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </>
+              )}
+
+              {group && uniqueUsers.length > 0 && (
+                <div>
+                  <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">User</label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                  >
+                    <option value="">All Users</option>
+                    {uniqueUsers.map(user => (
+                      <option key={user.userId} value={user.userId}>
+                        {user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Account</label>
+                <select
+                  value={selectedAccountId}
+                  onChange={(e) => setSelectedAccountId(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                >
+                  <option value="">All Accounts</option>
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {getAccountLabel(acc)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Trackable</label>
+                <select
+                  value={selectedTrackableId}
+                  onChange={(e) => setSelectedTrackableId(e.target.value)}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
+                >
+                  <option value="">All Trackables</option>
+                  {trackables.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Trackable</label>
-            <select
-              value={selectedTrackableId}
-              onChange={(e) => setSelectedTrackableId(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-accent"
-            >
-              <option value="">All Trackables</option>
-              {trackables.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+          {/* Summary Cards */}
+          {isLayoutSectionVisible('filteredSummary') && (
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-8">
+            <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+              <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Income</p>
+              <p className="text-lg md:text-2xl font-bold text-green-400 truncate">{formatAmount(analytics.totalIncome)}</p>
+            </div>
+            <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+              <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Expense</p>
+              <p className="text-lg md:text-2xl font-bold text-red-400 truncate">{formatAmount(analytics.totalExpense)}</p>
+            </div>
+            <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+              <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Net Flow</p>
+              <p className={`text-lg md:text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
+                {formatAmount(analytics.netFlow)}
+              </p>
+            </div>
+            <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
+              <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Expense/Income Ratio</p>
+              <p className="text-lg md:text-2xl font-bold text-accent">
+                {analytics.totalIncome > 0
+                  ? ((analytics.totalExpense / analytics.totalIncome) * 100).toFixed(1)
+                  : '0'}
+                %
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
+          )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-4 mb-4 md:mb-8">
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Income</p>
-          <p className="text-lg md:text-2xl font-bold text-green-400 truncate">{formatAmount(analytics.totalIncome)}</p>
-        </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Total Expense</p>
-          <p className="text-lg md:text-2xl font-bold text-red-400 truncate">{formatAmount(analytics.totalExpense)}</p>
-        </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Net Flow</p>
-          <p className={`text-lg md:text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-400' : 'text-red-400'} truncate`}>
-            {formatAmount(analytics.netFlow)}
-          </p>
-        </div>
-        <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6">
-          <p className="text-gray-400 text-xs md:text-sm mb-1 md:mb-2">Expense/Income Ratio</p>
-          <p className="text-lg md:text-2xl font-bold text-accent">
-            {analytics.totalIncome > 0
-              ? ((analytics.totalExpense / analytics.totalIncome) * 100).toFixed(1)
-              : '0'}
-            %
-          </p>
-        </div>
-      </div>
+          {/* Filtered Transactions */}
+          {isLayoutSectionVisible('filteredTransactions') && (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <ListOrdered size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Related Transactions</h2>
+            </div>
 
-      {/* Charts Section - Dynamic ordering based on config */}
-      <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
-        {sortedCharts.map((chart) => (
-          <div key={chart.id}>
-            {renderChart(chart.id)}
+            {filteredTransactions.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No transactions match the selected filters</p>
+            ) : (
+              <div className={`${filteredTransactions.length > transactionScrollThreshold ? 'max-h-[32rem] overflow-y-auto pr-1 md:pr-2' : ''} space-y-2 md:space-y-3`}>
+                {filteredTransactions.map((activity) => (
+                  <ActivityCard
+                    key={activity.id}
+                    activity={activity}
+                    trackable={activity.trackableId ? trackablesMap.get(activity.trackableId) : undefined}
+                    account={accountsMap.get(activity.accountId || activity.sourceId)}
+                    fromAccount={accountsMap.get(activity.fromAccountId || activity.fromSourceId)}
+                    toAccount={accountsMap.get(activity.toAccountId || activity.toSourceId)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+          )}
+
+          {/* Charts Section */}
+          {isLayoutSectionVisible('filteredCharts') && (
+          <div className="space-y-4 md:space-y-8 mb-4 md:mb-8">
+            {sortedCharts.map((chart) => (
+              <div key={chart.id}>
+                {renderChart(chart.id)}
+              </div>
+            ))}
+          </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

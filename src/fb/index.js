@@ -1190,31 +1190,46 @@ export const saveAnalyticsConfig = async (config) => {
  */
 export const getAnalyticsConfig = async () => {
   try {
+    const defaultConfig = {
+      masterTotal: { visible: true },
+      masterBalances: { visible: true },
+      masterTrackables: { visible: true },
+      filteredSummary: { visible: true },
+      filteredTransactions: { visible: true },
+      filteredCharts: { visible: true },
+      stickyMobileTabs: { enabled: true },
+      transactionScrollThreshold: { value: 10 },
+      trendsOverTime: { visible: true, position: 0 },
+      currentBalances: { visible: true, position: 1 },
+    };
+
     const userId = getUserId();
     const userDocRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userDocRef);
 
     if (userDoc.exists() && userDoc.data().analyticsConfig) {
-      return userDoc.data().analyticsConfig;
+      return {
+        ...defaultConfig,
+        ...userDoc.data().analyticsConfig,
+      };
     }
 
     // Return default configuration if not set
-    return {
-      categoryPie: { visible: true, position: 0 },
-      trackablePie: { visible: true, position: 1 },
-      accountBalanceOverTime: { visible: true, position: 2 },
-      trendsOverTime: { visible: true, position: 3 },
-      currentBalances: { visible: true, position: 4 },
-    };
+    return defaultConfig;
   } catch (error) {
     console.error('Error getting analytics config:', error);
     // Return default configuration on error
     return {
-      categoryPie: { visible: true, position: 0 },
-      trackablePie: { visible: true, position: 1 },
-      accountBalanceOverTime: { visible: true, position: 2 },
-      trendsOverTime: { visible: true, position: 3 },
-      currentBalances: { visible: true, position: 4 },
+      masterTotal: { visible: true },
+      masterBalances: { visible: true },
+      masterTrackables: { visible: true },
+      filteredSummary: { visible: true },
+      filteredTransactions: { visible: true },
+      filteredCharts: { visible: true },
+      stickyMobileTabs: { enabled: true },
+      transactionScrollThreshold: { value: 10 },
+      trendsOverTime: { visible: true, position: 0 },
+      currentBalances: { visible: true, position: 1 },
     };
   }
 };
@@ -1233,19 +1248,29 @@ export const listenToAnalyticsConfig = (onConfigChange) => {
     }
 
     const userDocRef = doc(db, 'users', userId);
+
+    const defaultConfig = {
+      masterTotal: { visible: true },
+      masterBalances: { visible: true },
+      masterTrackables: { visible: true },
+      filteredSummary: { visible: true },
+      filteredTransactions: { visible: true },
+      filteredCharts: { visible: true },
+      stickyMobileTabs: { enabled: true },
+      transactionScrollThreshold: { value: 10 },
+      trendsOverTime: { visible: true, position: 0 },
+      currentBalances: { visible: true, position: 1 },
+    };
     
     const unsubscribe = onSnapshot(userDocRef, (snap) => {
       if (snap.exists() && snap.data().analyticsConfig) {
-        onConfigChange(snap.data().analyticsConfig);
+        onConfigChange({
+          ...defaultConfig,
+          ...snap.data().analyticsConfig,
+        });
       } else {
         // Use default config if not set
-        onConfigChange({
-          categoryPie: { visible: true, position: 0 },
-          trackablePie: { visible: true, position: 1 },
-          accountBalanceOverTime: { visible: true, position: 2 },
-          trendsOverTime: { visible: true, position: 3 },
-          currentBalances: { visible: true, position: 4 },
-        });
+        onConfigChange(defaultConfig);
       }
     }, (error) => {
       console.error('Error listening to analytics config:', error);
