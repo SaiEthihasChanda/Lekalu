@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { calculateAccountBalance } from '../utils/analytics.js';
 
 describe('Analytics', () => {
   describe('Activity Filtering', () => {
@@ -95,6 +96,38 @@ describe('Analytics', () => {
 
       const countableActivities = activities.filter(a => a.type !== 'transfer');
       expect(countableActivities.length).toBe(2);
+    });
+
+    it('should subtract transfers from source account balance', () => {
+      const activities = [
+        { type: 'income', amount: 1000, accountId: 'acc-1' },
+        { type: 'transfer', amount: 250, fromAccountId: 'acc-1', toAccountId: 'acc-2' },
+      ];
+
+      const balance = calculateAccountBalance('acc-1', 0, activities);
+      expect(balance).toBe(750);
+    });
+
+    it('should add transfers to destination account balance', () => {
+      const activities = [
+        { type: 'income', amount: 100, accountId: 'acc-2' },
+        { type: 'transfer', amount: 250, fromAccountId: 'acc-1', toAccountId: 'acc-2' },
+      ];
+
+      const balance = calculateAccountBalance('acc-2', 0, activities);
+      expect(balance).toBe(350);
+    });
+
+    it('should treat legacy self transfer type as transfer for balances', () => {
+      const activities = [
+        { type: 'self transfer', amount: 400, fromAccountId: 'acc-1', toAccountId: 'acc-2' },
+      ];
+
+      const sourceBalance = calculateAccountBalance('acc-1', 1000, activities);
+      const destinationBalance = calculateAccountBalance('acc-2', 100, activities);
+
+      expect(sourceBalance).toBe(600);
+      expect(destinationBalance).toBe(500);
     });
   });
 

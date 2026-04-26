@@ -13,7 +13,8 @@ service cloud.firestore {
     }
 
     function getUserGroup(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.groupId;
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return userDoc.exists ? userDoc.data.groupId : null;
     }
 
     function isGroupMember(userId, groupId) {
@@ -48,56 +49,56 @@ service cloud.firestore {
     match /bankAccounts/{sourceId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Trackables - personal or group
     match /trackables/{trackableId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Activities - personal or group
     match /activities/{activityId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Trackers - personal or group
     match /trackers/{trackerId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         isGroupMember(request.auth.uid, resource.data.groupId));
+         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
   }
 }

@@ -1,9 +1,18 @@
 import { useState, useMemo } from 'react';
 import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
 
+const normalizeActivityType = (value) => {
+  if (typeof value !== 'string') return 'expense';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'self transfer' || normalized === 'self-transfer' || normalized === 'self_transfer') {
+    return 'transfer';
+  }
+  return normalized;
+};
+
 export const EditActivityForm = ({ activity, trackables, accounts, onSubmit, isLoading = false, onCancel }) => {
   const [amount, setAmount] = useState(activity?.amount?.toString() || '');
-  const [type, setType] = useState(activity?.type || 'expense');
+  const [type, setType] = useState(normalizeActivityType(activity?.type || 'expense'));
   const [trackableId, setTrackableId] = useState(activity?.trackableId || '');
   const [accountId, setAccountId] = useState(activity?.accountId || '');
   const [fromAccountId, setFromAccountId] = useState(activity?.fromAccountId || accounts[0]?.id || '');

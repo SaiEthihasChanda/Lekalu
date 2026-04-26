@@ -3,7 +3,10 @@ import { formatAmount, formatDate } from '../utils/analytics.js';
 import { Trash2, Edit2, ChevronDown } from 'lucide-react';
 import { getUserEmail } from '../fb/index.js';
 
-export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete }) => {
+const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
+const isTransferType = (type) => typeof type === 'string' && TRANSFER_TYPES.has(type.trim().toLowerCase());
+
+export const ActivityCard = ({ activity, trackable, account, fromAccount, toAccount, onEdit, onDelete }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [creatorEmail, setCreatorEmail] = useState(null);
 
@@ -22,12 +25,16 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
   }
   
   const isIncome = activity.type === 'income';
-  const isTransfer = activity.type === 'transfer';
+  const isTransfer = isTransferType(activity.type);
 
   const bgColor = isTransfer ? 'bg-gray-700/50' : isIncome ? 'bg-green-900/20' : 'bg-red-900/20';
   const textColor = isTransfer ? 'text-gray-300' : isIncome ? 'text-green-400' : 'text-red-400';
-  const amountPrefix = isIncome ? '+' : '-';
+  const amountPrefix = isTransfer ? '' : isIncome ? '+' : '-';
   const hasDescription = activity.description && activity.description.trim();
+  const fromAccountName = fromAccount?.cardName || 'Unknown Source Account';
+  const toAccountName = toAccount?.cardName || 'Unknown Destination Account';
+  const accountName = account?.cardName || 'Unknown Account';
+  const cardTitle = isTransfer ? 'Self Transfer' : (trackable?.name || 'Transaction');
 
   return (
     <div
@@ -37,11 +44,11 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
       {/* Single line: trackable name, amount, time, and action buttons */}
       <div className="flex items-center justify-between gap-2 mb-1">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xs text-white font-medium truncate">{trackable?.name || 'Transaction'}</h3>
+          <h3 className="text-xs text-white font-medium truncate">{cardTitle}</h3>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <span className={`${textColor} text-xs font-semibold whitespace-nowrap`}>
-            {amountPrefix}
+            {isTransfer ? 'Transfer ' : amountPrefix}
             {formatAmount(activity.amount)}
           </span>
           <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(activity.date, 'MMM dd, yyyy HH:mm')}</span>
@@ -50,7 +57,9 @@ export const ActivityCard = ({ activity, trackable, account, onEdit, onDelete })
 
       {/* Second line: account name and action buttons */}
       <div className="flex items-center justify-between gap-1">
-        <p className="text-xs text-gray-400 truncate flex-1">{account?.cardName || 'Unknown Account'}</p>
+        <p className="text-xs text-gray-400 truncate flex-1">
+          {isTransfer ? `${fromAccountName} -> ${toAccountName}` : accountName}
+        </p>
         <div className="flex items-center gap-0.5 flex-shrink-0">
           {hasDescription && (
             <button

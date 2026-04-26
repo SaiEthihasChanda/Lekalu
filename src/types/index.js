@@ -31,7 +31,9 @@
  * @property {number} amount
  * @property {'income' | 'expense' | 'transfer'} type
  * @property {string} [trackableId]
- * @property {string} accountId
+ * @property {string} [accountId]
+ * @property {string} [fromAccountId]
+ * @property {string} [toAccountId]
  * @property {string} description
  * @property {number} date
  * @property {number} createdAt

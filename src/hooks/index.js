@@ -62,6 +62,16 @@ export const useSources = () => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
                       const decrypted = decryptData(docData, encryptionKey);
+                      // Backward compatibility: older records may use `name` instead of `cardName`.
+                      if (!decrypted.cardName && decrypted.name) {
+                        decrypted.cardName = decrypted.name;
+                      }
+                      if (!decrypted.cardName) {
+                        decrypted.cardName = 'Unnamed Account';
+                      }
+                      if (decrypted.accountNumber == null) {
+                        decrypted.accountNumber = '';
+                      }
                       // Ensure sourceType is set (default to 'none' for old sources)
                       if (!decrypted.sourceType) {
                         decrypted.sourceType = 'none';
@@ -102,6 +112,16 @@ export const useSources = () => {
                     try {
                       const docData = { id: doc.id, ...doc.data() };
                       const decrypted = decryptData(docData, encryptionKey);
+                      // Backward compatibility: older records may use `name` instead of `cardName`.
+                      if (!decrypted.cardName && decrypted.name) {
+                        decrypted.cardName = decrypted.name;
+                      }
+                      if (!decrypted.cardName) {
+                        decrypted.cardName = 'Unnamed Account';
+                      }
+                      if (decrypted.accountNumber == null) {
+                        decrypted.accountNumber = '';
+                      }
                       // Ensure sourceType is set (default to 'none' for old sources)
                       if (!decrypted.sourceType) {
                         decrypted.sourceType = 'none';
@@ -466,7 +486,9 @@ export const useTrackables = () => {
  * @property {number} amount - Transaction amount
  * @property {string} type - 'income', 'expense', or 'transfer'
  * @property {string} [trackableId] - Linked trackable ID (optional)
- * @property {string} accountId - Linked account ID
+ * @property {string} [accountId] - Linked account ID for income/expense
+ * @property {string} [fromAccountId] - Source account for transfer
+ * @property {string} [toAccountId] - Destination account for transfer
  * @property {string} description - Activity description
  * @property {number} date - Transaction date timestamp
  * @property {number} createdAt - Timestamp

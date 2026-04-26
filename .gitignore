@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 FIREBASE_CLI_SETUP.md
 FIRESTORE_RULES_GUIDE.md
+.claude
+*.md
+*.pdf
+S

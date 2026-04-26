@@ -10,6 +10,9 @@ import { formatAmount } from '../utils/analytics.js';
 import { getUserEmail } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
+const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
+const isTransferType = (type) => typeof type === 'string' && TRANSFER_TYPES.has(type.trim().toLowerCase());
+
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
@@ -87,7 +90,7 @@ export const ActivityPage = () => {
   }, [activities, getDateRange, dateFilter]);
 
   const todayStats = useMemo(() => {
-    const filteredActivities = sortedActivities.filter(a => a.type !== 'transfer');
+    const filteredActivities = sortedActivities.filter(a => !isTransferType(a.type));
     const totalIncome = filteredActivities
       .filter(a => a.type === 'income')
       .reduce((sum, a) => sum + a.amount, 0);
@@ -246,6 +249,8 @@ export const ActivityPage = () => {
               activity={activity}
               trackable={activity.trackableId ? trackablesMap.get(activity.trackableId) : undefined}
               account={accountsMap.get(activity.accountId)}
+              fromAccount={accountsMap.get(activity.fromAccountId)}
+              toAccount={accountsMap.get(activity.toAccountId)}
               onEdit={() => handleEditActivity(activity.id)}
               onDelete={() => handleDeleteActivity(activity.id)}
             />

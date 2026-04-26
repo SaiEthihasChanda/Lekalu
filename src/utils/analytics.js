@@ -1,5 +1,12 @@
 import { startOfDay, startOfWeek, startOfMonth, startOfYear, endOfDay, endOfWeek, endOfMonth, endOfYear, format, eachDayOfInterval, eachMonthOfInterval } from 'date-fns';
 
+const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
+
+const isTransferType = (type) => {
+  if (typeof type !== 'string') return false;
+  return TRANSFER_TYPES.has(type.trim().toLowerCase());
+};
+
 export const getDateRange = (filter) => {
   const now = new Date();
   
@@ -46,7 +53,7 @@ export const calculateAnalytics = (activities, trackablesMap, filter) => {
     const matchTrackable = !filter.trackableId || activity.trackableId === filter.trackableId;
     const matchUser = !filter.userId || activity.userId === filter.userId;
     
-    return inDateRange && matchAccount && matchTrackable && matchUser && activity.type !== 'transfer';
+    return inDateRange && matchAccount && matchTrackable && matchUser && !isTransferType(activity.type);
   });
 
   const byCategory = {};
@@ -113,16 +120,38 @@ export const generateId = () => {
  * @returns {number} Current balance
  */
 export const calculateAccountBalance = (accountId, openingBalance = 0, activities = []) => {
-  const accountActivities = activities.filter(a => a.accountId === accountId);
+  const accountActivities = activities.filter((activity) => {
+    if (!activity) return false;
+
+    if (isTransferType(activity.type)) {
+      return (
+        activity.fromAccountId === accountId ||
+        activity.toAccountId === accountId ||
+        activity.fromSourceId === accountId ||
+        activity.toSourceId === accountId
+      );
+    }
+
+    // Backward compatibility: older activity records may store account reference as sourceId.
+    return activity.accountId === accountId || activity.sourceId === accountId;
+  });
   
   let balance = openingBalance;
   accountActivities.forEach(activity => {
+    const amount = Number(activity.amount) || 0;
+
     if (activity.type === 'income') {
-      balance += activity.amount;
+      balance += amount;
     } else if (activity.type === 'expense') {
-      balance -= activity.amount;
+      balance -= amount;
+    } else if (isTransferType(activity.type)) {
+      if (activity.fromAccountId === accountId || activity.fromSourceId === accountId) {
+        balance -= amount;
+      }
+      if (activity.toAccountId === accountId || activity.toSourceId === accountId) {
+        balance += amount;
+      }
     }
-    // transfers are not included in balance calculation
   });
   
   return balance;
@@ -161,7 +190,7 @@ export const generateDailyIncomeExpenseData = (activities = [], timeRange = 'mon
   
   // Filter activities to the date range
   const filtered = activities.filter(a => 
-    a.date >= start && a.date <= end && a.type !== 'transfer'
+    a.date >= start && a.date <= end && !isTransferType(a.type)
   );
 
   let dateRange = [];
