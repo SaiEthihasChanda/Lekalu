@@ -41,7 +41,7 @@ export const BiometricLoginButton = ({
       <button
         onClick={onBiometricLogin}
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-[#3370cc] text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent hover:bg-accent/90 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Use fingerprint or Face ID to login"
       >
         {isLoading ? (
@@ -184,7 +184,7 @@ export const BiometricSettings = ({
         <button
           onClick={handleRegisterClick}
           disabled={isRegistering || isLoading}
-          className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isRegistering ? (
             <>

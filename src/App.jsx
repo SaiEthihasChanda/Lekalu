@@ -7,12 +7,14 @@ import { MobileTopBar } from './components/MobileTopBar.jsx';
 import { Tour } from './components/Tour.jsx';
 import { PostLoginBiometricVerification } from './components/PostLoginBiometricVerification.jsx';
 import { isMobileDevice } from './utils/webauthn.js';
+import { applyTheme } from './utils/theme.js';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
 import { AnalyticsPage } from './pages/AnalyticsPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
+import { getThemePreference } from './fb/index.js';
 
 /**
  * Private route component that checks authentication
@@ -63,6 +65,25 @@ function AppContent() {
       }
     }
   }, [user, setIsBiometricVerified]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const loadTheme = async () => {
+      const theme = await getThemePreference();
+      if (!cancelled) {
+        applyTheme(theme);
+      }
+    };
+
+    loadTheme();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Start tour automatically on first login
   useEffect(() => {

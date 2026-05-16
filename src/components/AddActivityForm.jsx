@@ -222,7 +222,7 @@ export const AddActivityForm = ({ trackables, accounts, onSubmit, isLoading = fa
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 md:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm md:text-base"
+        className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-2 md:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm md:text-base"
       >
         {isLoading ? 'Adding...' : 'Add Activity'}
       </button>

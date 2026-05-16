@@ -189,7 +189,7 @@ export const ActivityPage = () => {
         <button
           id="tour-add-activity"
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2.5 md:py-2 px-6 rounded-lg transition-colors text-sm md:text-base w-fit whitespace-nowrap"
+          className="flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-white font-medium py-2.5 md:py-2 px-6 rounded-lg transition-colors text-sm md:text-base w-fit whitespace-nowrap"
         >
           <Plus size={18} className="md:w-5 md:h-5" />
           Add Activity
@@ -200,7 +200,7 @@ export const ActivityPage = () => {
       {group && (
         <div
           onClick={() => setIsGroupDetailsOpen(true)}
-          className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-accent/50 rounded-lg p-4 mb-6 md:mb-8 cursor-pointer hover:border-accent transition-colors"
+          className="bg-secondary border border-accent/50 rounded-lg p-4 mb-6 md:mb-8 cursor-pointer hover:border-accent transition-colors"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

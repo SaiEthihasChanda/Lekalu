@@ -98,7 +98,7 @@ export const TrackablesPage = () => {
         <div>
           <button
             onClick={() => setIsTrackableModalOpen(true)}
-            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
+            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
           >
             <Plus size={20} />
             Add Trackable
@@ -128,7 +128,7 @@ export const TrackablesPage = () => {
         <div>
           <button
             onClick={() => setIsAccountModalOpen(true)}
-            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
+            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg mb-6 transition-colors text-sm md:text-base"
           >
             <Plus size={20} />
             Add Source

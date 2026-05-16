@@ -285,9 +285,9 @@ export const CheckerModal = ({
                     isSelected
                       ? 'bg-accent text-white border-accent shadow-lg shadow-accent/50'
                       : hasWeeklyOrMonthly && !isSelected
-                      ? 'bg-blue-600 text-white border-blue-400 hover:bg-blue-500 shadow-md shadow-blue-500/30'
+                      ? 'bg-accent/90 text-white border-accent hover:bg-accent shadow-md shadow-black/20'
                       : hasDailyTracker && !isSelected
-                      ? 'bg-blue-700 text-white border-blue-500 hover:bg-blue-600 shadow-md shadow-blue-500/40'
+                      ? 'bg-accent text-white border-accent hover:bg-accent/90 shadow-md shadow-black/20'
                       : 'bg-gray-800 text-gray-500 hover:bg-gray-700 border-gray-700'
                   }`}
                 >

@@ -154,7 +154,7 @@ export const LoginPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-accent hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 rounded-lg transition-colors mt-6"
+              className="w-full bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 rounded-lg transition-colors mt-6"
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
@@ -191,7 +191,7 @@ export const LoginPage = () => {
             Don't have an account?{' '}
             <Link
               to="/register"
-              className="text-accent hover:text-blue-600 font-medium transition-colors"
+              className="text-accent hover:text-accent/80 font-medium transition-colors"
             >
               Register here
             </Link>

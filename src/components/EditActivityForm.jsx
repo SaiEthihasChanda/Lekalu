@@ -210,7 +210,7 @@ export const EditActivityForm = ({ activity, trackables, accounts, onSubmit, isL
         <button
           type="submit"
           disabled={isLoading}
-          className="flex-1 bg-accent hover:bg-blue-600 text-white font-medium py-2 md:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm md:text-base"
+          className="flex-1 bg-accent hover:bg-accent/90 text-white font-medium py-2 md:py-3 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm md:text-base"
         >
           {isLoading ? 'Saving...' : 'Save Changes'}
         </button>

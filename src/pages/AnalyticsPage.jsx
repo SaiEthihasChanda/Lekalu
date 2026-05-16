@@ -536,7 +536,7 @@ export const AnalyticsPage = () => {
             </div>
             <button
               onClick={handleOpenExportModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 flex-shrink-0"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent/90 flex-shrink-0"
             >
               <Download size={16} />
               Download Excel
@@ -852,7 +852,7 @@ export const AnalyticsPage = () => {
             </button>
             <button
               onClick={handleDownloadExcel}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
               disabled={isExporting}
             >
               {isExporting ? 'Preparing...' : 'Download'}

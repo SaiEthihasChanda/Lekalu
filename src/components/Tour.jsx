@@ -151,14 +151,14 @@ export const Tour = () => {
             {isLastStep ? (
               <button
                 onClick={endTour}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-xs md:text-sm transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white font-semibold text-xs md:text-sm transition-colors"
               >
                 Finish
               </button>
             ) : (
               <button
                 onClick={nextStep}
-                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-blue-600 text-white font-semibold text-xs md:text-sm transition-colors"
+                className="flex-1 md:flex-none flex items-center justify-center gap-1 px-4 py-2 rounded-lg bg-accent hover:bg-accent/90 text-white font-semibold text-xs md:text-sm transition-colors"
               >
                 Next
                 <ChevronRight size={16} />

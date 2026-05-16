@@ -3,6 +3,7 @@ import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, del
 import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import CryptoJS from 'crypto-js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
+import { DEFAULT_THEME, THEME_STORAGE_KEY, normalizeTheme } from '../utils/theme.js';
 
 /**
  * Replace these with your Firebase project credentials
@@ -439,6 +440,61 @@ export const getUserEmail = async (userId) => {
     console.error('Error getting user email:', error);
     return null;
   }
+};
+
+/**
+ * Save the user's preferred theme.
+ * @param {Object|string} theme - Theme preset key or theme config object
+ * @returns {Promise<Object>} Saved theme config
+ */
+export const saveThemePreference = async (theme) => {
+  const normalizedTheme = normalizeTheme(theme);
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(normalizedTheme));
+  }
+
+  try {
+    const userId = getUserId();
+    await setDoc(doc(db, 'users', userId), {
+      theme: normalizedTheme,
+      lastThemeUpdate: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error saving theme preference:', error);
+    throw error;
+  }
+
+  return normalizedTheme;
+};
+
+/**
+ * Get the user's preferred theme.
+ * Falls back to localStorage and the default theme.
+ * @returns {Promise<Object>} Theme config
+ */
+export const getThemePreference = async () => {
+  const storedTheme = typeof localStorage !== 'undefined'
+    ? localStorage.getItem(THEME_STORAGE_KEY)
+    : DEFAULT_THEME;
+
+  try {
+    const userId = getUserId();
+    const userDocRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists() && userDoc.data().theme) {
+      const theme = normalizeTheme(userDoc.data().theme);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+      }
+      return theme;
+    }
+  } catch (error) {
+    console.error('Error getting theme preference:', error);
+  }
+
+  return normalizeTheme(storedTheme);
 };
 
 /**

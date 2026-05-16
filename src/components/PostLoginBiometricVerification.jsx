@@ -169,7 +169,7 @@ export const PostLoginBiometricVerification = ({ onVerificationSuccess }) => {
             <button
               onClick={handleBiometricVerification}
               disabled={loading}
-              className="w-full bg-accent hover:bg-blue-600 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full bg-accent hover:bg-accent/90 text-white font-semibold py-3 rounded-lg mb-3 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

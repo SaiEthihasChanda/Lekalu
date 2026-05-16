@@ -233,13 +233,13 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
 
         {/* Migration Dialog - Show on top of everything */}
         {showMigrationDialog && !migrationCounts && (
-          <div className="mb-4 bg-blue-500/10 border border-blue-500/50 rounded-lg p-4 space-y-4">
+          <div className="mb-4 bg-accent/10 border border-accent/50 rounded-lg p-4 space-y-4">
             <div>
-              <h4 className="font-semibold text-blue-400 mb-2">Migrate Your Data</h4>
-              <p className="text-sm text-blue-300 mb-2">
+              <h4 className="font-semibold text-accent mb-2">Migrate Your Data</h4>
+              <p className="text-sm text-gray-200 mb-2">
                 Would you like to migrate your existing data (activities, trackables, bank accounts, and tracked items) to this new group? All group members will have access to this data.
               </p>
-              <p className="text-xs text-blue-300/70">
+              <p className="text-xs text-gray-400">
                 You can always migrate data later from the group settings.
               </p>
             </div>
@@ -254,7 +254,7 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
               <button
                 onClick={handleMigrateData}
                 disabled={isMigrating}
-                className="flex-1 bg-accent hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
               >
                 {isMigrating ? 'Migrating...' : 'Migrate Data'}
               </button>
@@ -280,15 +280,15 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setShowMigrationDialog(false);
-                setMigrationCounts(null);
-                setLoading(false);
-                if (onGroupUpdated) onGroupUpdated();
-              }}
-              className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
+              <button
+                onClick={() => {
+                  setShowMigrationDialog(false);
+                  setMigrationCounts(null);
+                  setLoading(false);
+                  if (onGroupUpdated) onGroupUpdated();
+                }}
+                className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+              >
               Done
             </button>
           </div>
@@ -412,7 +412,7 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
               <>
                 <button
                   onClick={() => setShowCreateGroup(true)}
-                  className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus size={18} />
                   Create Group
@@ -450,7 +450,7 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
                   <button
                     onClick={handleCreateGroup}
                     disabled={loading}
-                    className="flex-1 bg-accent hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="flex-1 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
                     {loading ? 'Creating...' : 'Create'}
                   </button>
@@ -482,7 +482,7 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
                   <button
                     onClick={handleJoinGroup}
                     disabled={loading}
-                    className="flex-1 bg-accent hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="flex-1 bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
                     {loading ? 'Joining...' : 'Join'}
                   </button>
@@ -493,8 +493,8 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
         )}
 
         {/* Info Text */}
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-          <p className="text-xs text-blue-300">
+        <div className="mt-4 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+          <p className="text-xs text-gray-200">
             💡 Groups allow you to share expenses with others. All data will be visible to group members.
             Leaving or deleting a group will restore your personal data.
           </p>

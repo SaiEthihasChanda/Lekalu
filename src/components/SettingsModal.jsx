@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings, AlertTriangle, Trash2, X, Users, Lock, Fingerprint } from 'lucide-react';
-import { deleteAllUserData, getUserId, initializeAuth, saveAnalyticsConfig, getAnalyticsConfig } from '../fb/index.js';
+import { deleteAllUserData, getUserId, initializeAuth, saveAnalyticsConfig, getAnalyticsConfig, saveThemePreference, getThemePreference } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
 import { GroupManagementModal } from './GroupManagementModal.jsx';
 import { BiometricSettings } from './BiometricAuth.jsx';
 import { AnalyticsDisplaySettings } from './AnalyticsDisplaySettings.jsx';
 import { isMobileDevice, registerBiometric } from '../utils/webauthn.js';
+import { DEFAULT_THEME, applyTheme, normalizeTheme, resolveThemePalette } from '../utils/theme.js';
 
 /**
  * Settings Modal Component
@@ -28,16 +29,31 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
   const [isSavingAnalyticsConfig, setIsSavingAnalyticsConfig] = useState(false);
   const [analyticsConfigError, setAnalyticsConfigError] = useState('');
   const [analyticsConfigSuccess, setAnalyticsConfigSuccess] = useState('');
+  const [themeDraft, setThemeDraft] = useState(DEFAULT_THEME);
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
+  const [themeError, setThemeError] = useState('');
+  const [themeSuccess, setThemeSuccess] = useState('');
   const { group, user } = useAuth();
   const isGroupOwner = group && user && group.owner === user.uid;
+  const themeDraftRef = useRef(DEFAULT_THEME);
+
+  useEffect(() => {
+    themeDraftRef.current = themeDraft;
+  }, [themeDraft]);
 
   // Load analytics config on mount
   useEffect(() => {
     const loadConfig = async () => {
       setIsLoadingAnalyticsConfig(true);
       try {
-        const config = await getAnalyticsConfig();
+        const [config, theme] = await Promise.all([
+          getAnalyticsConfig(),
+          getThemePreference(),
+        ]);
         setAnalyticsConfig(config);
+        const normalizedTheme = normalizeTheme(theme);
+        setThemeDraft(normalizedTheme);
+        applyTheme(normalizedTheme);
       } catch (err) {
         console.error('Error loading analytics config:', err);
         setAnalyticsConfigError('Failed to load analytics configuration');
@@ -173,6 +189,50 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
     }
   };
 
+  const persistTheme = async (nextTheme, successMessage) => {
+    setThemeError('');
+    setThemeSuccess('');
+    setIsSavingTheme(true);
+
+    applyTheme(nextTheme);
+
+    try {
+      await saveThemePreference(nextTheme);
+      setThemeSuccess(successMessage);
+      setTimeout(() => setThemeSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error saving theme preference:', err);
+      setThemeError('Failed to save theme preference');
+    } finally {
+      setIsSavingTheme(false);
+    }
+  };
+
+  const handleThemeColorChange = (field, value) => {
+    const currentTheme = themeDraftRef.current;
+    const nextTheme = {
+      mode: 'custom',
+      background: field === 'background' ? value : currentTheme.background,
+      foreground: field === 'foreground' ? value : currentTheme.foreground,
+    };
+
+    themeDraftRef.current = nextTheme;
+    setThemeDraft(nextTheme);
+    persistTheme(nextTheme, 'Theme palette saved successfully!');
+  };
+
+  const handleThemeReset = () => {
+    themeDraftRef.current = DEFAULT_THEME;
+    setThemeDraft(DEFAULT_THEME);
+    persistTheme(DEFAULT_THEME, 'Default theme restored successfully!');
+  };
+
+  const themePalette = resolveThemePalette(themeDraft);
+  const isDefaultTheme =
+    themeDraft.preset === DEFAULT_THEME.preset &&
+    themeDraft.background?.toUpperCase() === DEFAULT_THEME.background.toUpperCase() &&
+    themeDraft.foreground?.toUpperCase() === DEFAULT_THEME.foreground.toUpperCase();
+
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose}>
@@ -207,7 +267,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
 
             <button
               onClick={() => setIsGroupModalOpen(true)}
-              className="w-full bg-accent hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <Users size={18} />
               Manage Group
@@ -237,10 +297,120 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
             </>
           )}
 
-          {/* Analytics Display Settings Section */}
-          <div className="bg-primary border border-blue-500/30 rounded-lg p-4">
+          {/* Theme Section */}
+          <div className="bg-primary border border-accent/30 rounded-lg p-4">
             <div className="flex items-start gap-3 mb-4">
-              <Settings size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-700 flex-shrink-0 mt-0.5 overflow-hidden"
+                style={{ backgroundColor: `rgb(${themePalette.baseBackground})` }}
+              >
+                <div
+                  className="h-5 w-5 rounded-md border border-white/20"
+                  style={{ backgroundColor: `rgb(${themePalette.baseForeground})` }}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-semibold text-white mb-1">Theme</h3>
+                  <span className="rounded-full border border-gray-600 bg-secondary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300">
+                    {isDefaultTheme ? 'Default' : 'Custom'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Pick a background and foreground color with the wheel to shape the whole app.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-gray-700 bg-secondary p-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg border border-white/10 p-3" style={{ backgroundColor: `rgb(${themePalette.primary})` }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Background</p>
+                  <p className="mt-8 text-xs text-white/80">{themeDraft.background}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 p-3" style={{ backgroundColor: `rgb(${themePalette.secondary})` }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Foreground</p>
+                  <p className="mt-8 text-xs text-white/80">{themeDraft.foreground}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 p-3" style={{ backgroundColor: `rgb(${themePalette.accent})` }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">Accent</p>
+                  <p className="mt-8 text-xs text-white/80">Auto</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-white">Background color</span>
+                  <span className="font-mono text-xs uppercase text-gray-400">{themeDraft.background}</span>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-gray-700 bg-secondary/90 p-2">
+                  <input
+                    type="color"
+                    value={themeDraft.background}
+                    onChange={(event) => handleThemeColorChange('background', event.target.value)}
+                    className="h-12 w-14 cursor-pointer rounded-lg border border-gray-600 bg-transparent p-1"
+                    aria-label="Background color"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">Main shell tone</p>
+                    <p className="text-xs text-gray-400">Drives the app background and shell surfaces.</p>
+                  </div>
+                </div>
+              </label>
+
+              <label className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-white">Foreground color</span>
+                  <span className="font-mono text-xs uppercase text-gray-400">{themeDraft.foreground}</span>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-gray-700 bg-secondary/90 p-2">
+                  <input
+                    type="color"
+                    value={themeDraft.foreground}
+                    onChange={(event) => handleThemeColorChange('foreground', event.target.value)}
+                    className="h-12 w-14 cursor-pointer rounded-lg border border-gray-600 bg-transparent p-1"
+                    aria-label="Foreground color"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">Card and sidebar tone</p>
+                    <p className="text-xs text-gray-400">Keeps the app in a distinct second tone.</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleThemeReset}
+                className="text-xs font-medium text-gray-400 transition-colors hover:text-accent"
+              >
+                Reset background and foreground
+              </button>
+              <p className="text-xs text-gray-500">
+                {isSavingTheme ? 'Saving theme...' : 'Changes are applied live.'}
+              </p>
+            </div>
+
+            {themeError && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                <p className="text-red-400 text-sm">{themeError}</p>
+              </div>
+            )}
+
+            {themeSuccess && (
+              <div className="mt-3 p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
+                <p className="text-green-400 text-sm">{themeSuccess}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Analytics Display Settings Section */}
+          <div className="bg-primary border border-accent/30 rounded-lg p-4">
+            <div className="flex items-start gap-3 mb-4">
+              <Settings size={20} className="text-accent flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-white mb-1">Analytics Display</h3>
                 <p className="text-sm text-gray-400">
@@ -296,6 +466,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               <div className="p-3 bg-orange-500/10 border border-orange-500/50 rounded-lg flex items-start gap-3">
                 <Lock size={18} className="text-orange-400 flex-shrink-0 mt-0.5" />
                 <div>
+
                   <p className="text-sm font-medium text-orange-400">Group Member Restriction</p>
                   <p className="text-xs text-orange-300 mt-1">
                     Only the group owner can clear data. Leave the group first to clear your personal data.

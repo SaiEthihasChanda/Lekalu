@@ -132,7 +132,7 @@ export const GoogleMFABiometric = ({ userId, email, onComplete, onSkip }) => {
           <button
             onClick={handleRegisterBiometric}
             disabled={loading}
-            className="w-full bg-accent hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-accent hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
