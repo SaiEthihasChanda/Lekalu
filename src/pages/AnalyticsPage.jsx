@@ -1,10 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useActivities, useTrackables, useSources } from '../hooks/index.js';
 import { calculateAnalytics, formatAmount, calculateAccountBalance, generateDailyIncomeExpenseData, getDateRange } from '../utils/analytics.js';
-import { TrendingUp, Wallet, DollarSign, ListOrdered } from 'lucide-react';
+import { TrendingUp, Wallet, DollarSign, ListOrdered, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
 import { ActivityCard } from '../components/ActivityCard.jsx';
+import { Modal } from '../components/Modal.jsx';
+import { format as formatDate } from 'date-fns';
+import * as XLSX from 'xlsx';
 import {
   BarChart,
   Bar,
@@ -58,6 +61,28 @@ const shouldIncludeTrackableInMasterView = (trackable, view) => {
 
 const getAccountLabel = (account) => account?.cardName || account?.name || 'Unnamed Account';
 
+const getActivityAccountId = (activity) => activity?.accountId || activity?.sourceId || activity?.fromAccountId || activity?.fromSourceId || activity?.toAccountId || activity?.toSourceId || '';
+
+const resolveTransactionScrollThreshold = (config) => {
+  const candidates = [
+    config?.transactionScrollThreshold?.value,
+    config?.transactionScrollThreshold,
+    config?.transactionScrollLimit?.value,
+    config?.transactionScrollLimit,
+    config?.transactionListScrollThreshold?.value,
+    config?.transactionListScrollThreshold,
+  ];
+
+  for (const candidate of candidates) {
+    const numeric = Number.parseInt(candidate, 10);
+    if (Number.isFinite(numeric)) {
+      return Math.max(1, Math.min(50, numeric));
+    }
+  }
+
+  return 10;
+};
+
 const getDefaultConfigValue = (id, field) => {
   const defaults = {
     masterTotal: { visible: true },
@@ -78,6 +103,11 @@ const getDefaultConfigValue = (id, field) => {
 export const AnalyticsPage = () => {
   const [activeTab, setActiveTab] = useState('master'); // master | filtered
   const [masterView, setMasterView] = useState('all'); // all | income | expenses
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [timeRange, setTimeRange] = useState('month');
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedTrackableId, setSelectedTrackableId] = useState('');
@@ -192,6 +222,118 @@ export const AnalyticsPage = () => {
     return Array.from(totals.values()).sort((a, b) => b.total - a.total);
   }, [activities, trackablesMap, masterView]);
 
+  const exportableMasterTransactions = useMemo(() => {
+    const start = exportStartDate ? new Date(`${exportStartDate}T00:00:00`).getTime() : null;
+    const end = exportEndDate ? new Date(`${exportEndDate}T23:59:59.999`).getTime() : null;
+
+    return [...activities]
+      .filter((activity) => {
+        if (!activity || !activity.date || isTransferType(activity.type)) return false;
+
+        const activityDate = Number(activity.date);
+        if (Number.isNaN(activityDate)) return false;
+        if (start != null && activityDate < start) return false;
+        if (end != null && activityDate > end) return false;
+
+        const accountId = getActivityAccountId(activity);
+        if (!accountId) return masterView === 'all';
+
+        const account = accountsMap.get(accountId);
+        if (!account) return masterView === 'all';
+
+        return shouldIncludeAccountInMasterView(account, masterView);
+      })
+      .sort((a, b) => (a.date || 0) - (b.date || 0));
+  }, [activities, accountsMap, exportStartDate, exportEndDate, masterView]);
+
+  const handleOpenExportModal = () => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    setExportStartDate(firstDayOfMonth.toISOString().slice(0, 10));
+    setExportEndDate(today.toISOString().slice(0, 10));
+    setExportError('');
+    setShowExportModal(true);
+  };
+
+  const handleDownloadExcel = async () => {
+    setExportError('');
+
+    if (!exportStartDate || !exportEndDate) {
+      setExportError('Please select both from and to dates.');
+      return;
+    }
+
+    const start = new Date(`${exportStartDate}T00:00:00`).getTime();
+    const end = new Date(`${exportEndDate}T23:59:59.999`).getTime();
+
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      setExportError('Please enter valid dates.');
+      return;
+    }
+
+    if (start > end) {
+      setExportError('From date must be before or equal to the to date.');
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const toExportRow = (activity) => {
+        const accountId = getActivityAccountId(activity);
+        const account = accountsMap.get(accountId);
+        const trackable = activity.trackableId ? trackablesMap.get(activity.trackableId) : null;
+        const amount = Number(activity.amount) || 0;
+
+        return {
+          Date: formatDate(new Date(activity.date), 'yyyy-MM-dd'),
+          Trackable: trackable?.name || activity.trackableName || 'N/A',
+          Amount: String(String(activity.type || '').toLowerCase() === 'expense' ? -Math.abs(amount) : Math.abs(amount)),
+          'Bank Source': getAccountLabel(account),
+        };
+      };
+
+      const activitiesInRange = [...activities].filter((activity) => {
+        if (!activity || !activity.date || isTransferType(activity.type)) return false;
+
+        const activityDate = Number(activity.date);
+        if (Number.isNaN(activityDate)) return false;
+        if (activityDate < start || activityDate > end) return false;
+
+        return true;
+      });
+
+      const masterRows = exportableMasterTransactions.map(toExportRow);
+      const incomeRows = activitiesInRange
+        .filter((activity) => String(activity.type || '').toLowerCase() === 'income')
+        .map(toExportRow);
+      const expenseRows = activitiesInRange
+        .filter((activity) => String(activity.type || '').toLowerCase() === 'expense')
+        .map(toExportRow);
+
+      const workbook = XLSX.utils.book_new();
+      const worksheetOptions = {
+        header: ['Date', 'Trackable', 'Amount', 'Bank Source'],
+      };
+
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(masterRows, worksheetOptions), 'Master Data');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(incomeRows, worksheetOptions), 'Income');
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(expenseRows, worksheetOptions), 'Expenses');
+
+      const safeStart = exportStartDate.replaceAll('-', '');
+      const safeEnd = exportEndDate.replaceAll('-', '');
+      const fileName = `Lekalu_Analytics_${masterView}_${safeStart}_${safeEnd}.xlsx`;
+      XLSX.writeFile(workbook, fileName, { compression: true });
+
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Error exporting master data:', error);
+      setExportError('Failed to generate the Excel file. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const filteredTransactions = useMemo(() => {
     const { start, end } = getDateRange(filter);
 
@@ -252,7 +394,7 @@ export const AnalyticsPage = () => {
   };
 
   const stickyMobileTabsEnabled = analyticsConfig?.stickyMobileTabs?.enabled ?? getDefaultConfigValue('stickyMobileTabs', 'enabled') ?? true;
-  const transactionScrollThreshold = analyticsConfig?.transactionScrollThreshold?.value ?? getDefaultConfigValue('transactionScrollThreshold', 'value') ?? 10;
+  const transactionScrollThreshold = resolveTransactionScrollThreshold(analyticsConfig);
 
   
   // Helper function to check if a visualization should be shown
@@ -386,6 +528,21 @@ export const AnalyticsPage = () => {
 
       {activeTab === 'master' && (
         <>
+          <div className="flex items-start justify-between gap-3 mb-4 md:mb-6">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.25em] text-gray-500 mb-1">Master View</p>
+              <h2 className="text-lg md:text-2xl font-semibold text-white">Master data overview</h2>
+              <p className="text-sm text-gray-400 mt-1">View totals, balances, and per-trackable values, or export a date range.</p>
+            </div>
+            <button
+              onClick={handleOpenExportModal}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-600 flex-shrink-0"
+            >
+              <Download size={16} />
+              Download Excel
+            </button>
+          </div>
+
           {/* Master Sub Tabs */}
           <div className={`${stickyMobileTabsEnabled ? 'sticky top-[72px] z-10 bg-primary/95 backdrop-blur-sm py-2 md:static md:bg-transparent md:backdrop-blur-none md:py-0' : 'py-2 md:py-0'}`}>
             <div className="grid grid-cols-3 gap-1 bg-secondary border border-gray-700 rounded-xl p-1 mb-4 md:mb-8">
@@ -615,7 +772,7 @@ export const AnalyticsPage = () => {
             {filteredTransactions.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No transactions match the selected filters</p>
             ) : (
-              <div className={`${filteredTransactions.length > transactionScrollThreshold ? 'max-h-[32rem] overflow-y-auto pr-1 md:pr-2' : ''} space-y-2 md:space-y-3`}>
+              <div className={`${filteredTransactions.length >= transactionScrollThreshold ? 'max-h-[32rem] overflow-y-auto pr-1 md:pr-2' : ''} space-y-2 md:space-y-3`}>
                 {filteredTransactions.map((activity) => (
                   <ActivityCard
                     key={activity.id}
@@ -643,6 +800,66 @@ export const AnalyticsPage = () => {
           )}
         </>
       )}
+
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Download Master Data"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-400">
+            Export the current master view as an Excel file. The date range is inclusive.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">From date</label>
+              <input
+                type="date"
+                value={exportStartDate}
+                onChange={(e) => setExportStartDate(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">To date</label>
+              <input
+                type="date"
+                value={exportEndDate}
+                onChange={(e) => setExportEndDate(e.target.value)}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-700 bg-primary p-3 text-sm text-gray-300">
+            <p>Master subview: <span className="font-semibold text-white capitalize">{masterView}</span></p>
+            <p className="mt-1">Rows ready to export: <span className="font-semibold text-white">{exportableMasterTransactions.length}</span></p>
+          </div>
+
+          {exportError && (
+            <p className="text-sm text-red-400">{exportError}</p>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              onClick={() => setShowExportModal(false)}
+              className="rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 transition-colors"
+              disabled={isExporting}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDownloadExcel}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-blue-600 transition-colors disabled:opacity-50"
+              disabled={isExporting}
+            >
+              {isExporting ? 'Preparing...' : 'Download'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

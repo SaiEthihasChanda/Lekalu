@@ -23,6 +23,18 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+/**
+ * Check whether the current browser host is suitable for Google popup auth.
+ * Firebase blocks popup auth on localhost unless the domain is explicitly authorized.
+ * @returns {boolean}
+ */
+export const canUseGoogleAuth = () => {
+  if (typeof window === 'undefined') return true;
+
+  const hostname = window.location.hostname;
+  return !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname);
+};
+
 // Initialize anonymous auth
 export const initializeAuth = async () => {
   try {

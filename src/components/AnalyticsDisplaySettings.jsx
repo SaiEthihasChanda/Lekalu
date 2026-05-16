@@ -14,8 +14,45 @@ const getDefaults = () => ({
   currentBalances: { visible: true, position: 1 },
 });
 
+const normalizeThresholdConfig = (rawThreshold, fallback = 10) => {
+  if (typeof rawThreshold === 'number' && Number.isFinite(rawThreshold)) {
+    return { value: Math.max(1, Math.min(50, Math.trunc(rawThreshold))) };
+  }
+
+  if (typeof rawThreshold === 'string') {
+    const parsed = Number.parseInt(rawThreshold, 10);
+    if (Number.isFinite(parsed)) {
+      return { value: Math.max(1, Math.min(50, parsed)) };
+    }
+  }
+
+  if (rawThreshold && typeof rawThreshold === 'object') {
+    const parsed = Number.parseInt(rawThreshold.value, 10);
+    if (Number.isFinite(parsed)) {
+      return {
+        ...rawThreshold,
+        value: Math.max(1, Math.min(50, parsed)),
+      };
+    }
+
+    return {
+      ...rawThreshold,
+      value: fallback,
+    };
+  }
+
+  return { value: fallback };
+};
+
 const mergeWithDefaults = (config) => {
   const defaults = getDefaults();
+
+  // Backward compatibility: old configs may store this as a scalar.
+  const thresholdConfig = normalizeThresholdConfig(
+    config?.transactionScrollThreshold,
+    defaults.transactionScrollThreshold.value
+  );
+
   return {
     ...defaults,
     ...(config || {}),
@@ -26,7 +63,7 @@ const mergeWithDefaults = (config) => {
     filteredTransactions: { ...defaults.filteredTransactions, ...(config?.filteredTransactions || {}) },
     filteredCharts: { ...defaults.filteredCharts, ...(config?.filteredCharts || {}) },
     stickyMobileTabs: { ...defaults.stickyMobileTabs, ...(config?.stickyMobileTabs || {}) },
-    transactionScrollThreshold: { ...defaults.transactionScrollThreshold, ...(config?.transactionScrollThreshold || {}) },
+    transactionScrollThreshold: { ...defaults.transactionScrollThreshold, ...thresholdConfig },
     trendsOverTime: { ...defaults.trendsOverTime, ...(config?.trendsOverTime || {}) },
     currentBalances: { ...defaults.currentBalances, ...(config?.currentBalances || {}) },
   };

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
-import { registerUser, signInWithGoogle } from '../fb/index.js';
+import { registerUser, signInWithGoogle, canUseGoogleAuth } from '../fb/index.js';
 import { BiometricLoginButton } from '../components/BiometricAuth.jsx';
 import { PostLoginBiometricVerification } from '../components/PostLoginBiometricVerification.jsx';
 import { isMobileDevice } from '../utils/webauthn.js';
@@ -14,6 +14,7 @@ export const RegisterPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showBiometricVerification, setShowBiometricVerification] = useState(false);
+  const googleAuthEnabled = canUseGoogleAuth();
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -62,6 +63,11 @@ export const RegisterPage = () => {
     setLoading(true);
 
     try {
+      if (!googleAuthEnabled) {
+        setError('Google sign-up is disabled on localhost. Use email/password, or add this domain in Firebase authorized domains.');
+        return;
+      }
+
       await signInWithGoogle();
       // On mobile: require biometric verification before entering app
       if (isMobileDevice()) {
@@ -70,7 +76,9 @@ export const RegisterPage = () => {
         navigate('/');
       }
     } catch (err) {
-      const errorMessage = err.code === 'auth/popup-closed-by-user'
+      const errorMessage = err.code === 'auth/unauthorized-domain'
+        ? 'Google sign-in is not authorized for this domain.'
+        : err.code === 'auth/popup-closed-by-user'
         ? 'Sign-in cancelled.'
         : err.code === 'auth/popup-blocked'
         ? 'Sign-in popup was blocked. Please allow popups.'
@@ -183,14 +191,20 @@ export const RegisterPage = () => {
           </div>
 
           {/* Google Sign In Button */}
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            <LogIn size={18} />
-            Sign up with Google
-          </button>
+          {googleAuthEnabled ? (
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn size={18} />
+              Sign up with Google
+            </button>
+          ) : (
+            <div className="w-full rounded-lg border border-gray-700 bg-primary px-4 py-3 text-sm text-gray-400">
+              Google sign-up is disabled on localhost. Use email/password for local testing.
+            </div>
+          )}
 
           {/* Login Link */}
           <p className="text-center text-gray-400 text-sm mt-6">
