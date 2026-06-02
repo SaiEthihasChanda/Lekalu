@@ -33,7 +33,37 @@ export const canUseGoogleAuth = () => {
   if (typeof window === 'undefined') return true;
 
   const hostname = window.location.hostname;
-  return !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname);
+  return !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname) && !isAndroidAppWebView();
+};
+
+/**
+ * Detect the Android APK WebView shell.
+ * Firebase web popup auth cannot complete once the OAuth flow leaves this WebView.
+ * @returns {boolean}
+ */
+export const isAndroidAppWebView = () => {
+  if (typeof window === 'undefined') return false;
+
+  const hostname = window.location.hostname;
+  const userAgent = window.navigator?.userAgent || '';
+
+  return hostname === 'appassets.androidplatform.net'
+    || (/Android/i.test(userAgent) && /\bwv\b/i.test(userAgent));
+};
+
+/**
+ * Explain why Google auth is unavailable in the current runtime.
+ * @param {string} action - User-facing action label, e.g. "sign-in" or "sign-up".
+ * @returns {string}
+ */
+export const getGoogleAuthUnavailableMessage = (action = 'sign-in') => {
+  if (typeof window === 'undefined') return '';
+
+  if (isAndroidAppWebView()) {
+    return `Google ${action} is not available in this APK build yet. Use email/password in the app, or use the web version for Google login.`;
+  }
+
+  return `Google ${action} is disabled on localhost. Use email/password, or add this domain in Firebase authorized domains.`;
 };
 
 // Initialize anonymous auth
@@ -61,6 +91,8 @@ export const getUserId = () => {
   }
   return user.uid;
 };
+
+const resolveUserId = (userId) => userId || getUserId();
 
 /**
  * Helper function to add user ID to data
@@ -445,18 +477,19 @@ export const getUserEmail = async (userId) => {
 /**
  * Save the user's preferred theme.
  * @param {Object|string} theme - Theme preset key or theme config object
+ * @param {string} [userId] - User ID to persist against
  * @returns {Promise<Object>} Saved theme config
  */
-export const saveThemePreference = async (theme) => {
+export const saveThemePreference = async (theme, userId) => {
   const normalizedTheme = normalizeTheme(theme);
+  const resolvedUserId = resolveUserId(userId);
 
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(normalizedTheme));
   }
 
   try {
-    const userId = getUserId();
-    await setDoc(doc(db, 'users', userId), {
+    await setDoc(doc(db, 'users', resolvedUserId), {
       theme: normalizedTheme,
       lastThemeUpdate: serverTimestamp(),
     }, { merge: true });
@@ -471,16 +504,17 @@ export const saveThemePreference = async (theme) => {
 /**
  * Get the user's preferred theme.
  * Falls back to localStorage and the default theme.
+ * @param {string} [userId] - User ID to read from
  * @returns {Promise<Object>} Theme config
  */
-export const getThemePreference = async () => {
+export const getThemePreference = async (userId) => {
   const storedTheme = typeof localStorage !== 'undefined'
     ? localStorage.getItem(THEME_STORAGE_KEY)
     : DEFAULT_THEME;
 
   try {
-    const userId = getUserId();
-    const userDocRef = doc(db, 'users', userId);
+    const resolvedUserId = resolveUserId(userId);
+    const userDocRef = doc(db, 'users', resolvedUserId);
     const userDoc = await getDoc(userDocRef);
 
     if (userDoc.exists() && userDoc.data().theme) {
@@ -1236,12 +1270,13 @@ export const deleteGoogleMFACredential = async (credentialId) => {
 /**
  * Save analytics display configuration for the user
  * @param {Object} config - Analytics configuration with visualization settings
+ * @param {string} [userId] - User ID to persist against
  * @returns {Promise<void>}
  */
-export const saveAnalyticsConfig = async (config) => {
+export const saveAnalyticsConfig = async (config, userId) => {
   try {
-    const userId = getUserId();
-    const userDocRef = doc(db, 'users', userId);
+    const resolvedUserId = resolveUserId(userId);
+    const userDocRef = doc(db, 'users', resolvedUserId);
     await setDoc(userDocRef, {
       analyticsConfig: config,
       lastAnalyticsConfigUpdate: serverTimestamp(),
@@ -1254,9 +1289,10 @@ export const saveAnalyticsConfig = async (config) => {
 
 /**
  * Get analytics display configuration for the user
+ * @param {string} [userId] - User ID to read from
  * @returns {Promise<Object>} Analytics configuration
  */
-export const getAnalyticsConfig = async () => {
+export const getAnalyticsConfig = async (userId) => {
   try {
     const defaultConfig = {
       masterTotal: { visible: true },
@@ -1271,8 +1307,8 @@ export const getAnalyticsConfig = async () => {
       currentBalances: { visible: true, position: 1 },
     };
 
-    const userId = getUserId();
-    const userDocRef = doc(db, 'users', userId);
+    const resolvedUserId = resolveUserId(userId);
+    const userDocRef = doc(db, 'users', resolvedUserId);
     const userDoc = await getDoc(userDocRef);
 
     if (userDoc.exists() && userDoc.data().analyticsConfig) {
@@ -1305,17 +1341,18 @@ export const getAnalyticsConfig = async () => {
 /**
  * Listen for real-time analytics config changes
  * @param {Function} onConfigChange - Callback when config changes
+ * @param {string} [userId] - User ID to listen for
  * @returns {Function} Unsubscribe function
  */
-export const listenToAnalyticsConfig = (onConfigChange) => {
+export const listenToAnalyticsConfig = (onConfigChange, userId) => {
   try {
-    const userId = getUserId();
-    if (!userId) {
+    const resolvedUserId = userId || getUserId();
+    if (!resolvedUserId) {
       console.warn('No user ID available for listening to analytics config');
       return () => {};
     }
 
-    const userDocRef = doc(db, 'users', userId);
+    const userDocRef = doc(db, 'users', resolvedUserId);
 
     const defaultConfig = {
       masterTotal: { visible: true },

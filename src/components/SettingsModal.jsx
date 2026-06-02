@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, AlertTriangle, Trash2, X, Users, Lock, Fingerprint } from 'lucide-react';
+import { Settings, AlertTriangle, Trash2, X, Users, Lock, ShieldCheck, ExternalLink } from 'lucide-react';
 import { deleteAllUserData, getUserId, initializeAuth, saveAnalyticsConfig, getAnalyticsConfig, saveThemePreference, getThemePreference } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Modal } from './Modal.jsx';
@@ -47,8 +47,8 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
       setIsLoadingAnalyticsConfig(true);
       try {
         const [config, theme] = await Promise.all([
-          getAnalyticsConfig(),
-          getThemePreference(),
+          getAnalyticsConfig(user?.uid),
+          getThemePreference(user?.uid),
         ]);
         setAnalyticsConfig(config);
         const normalizedTheme = normalizeTheme(theme);
@@ -178,7 +178,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
     setAnalyticsConfigSuccess('');
 
     try {
-      await saveAnalyticsConfig(newConfig);
+      await saveAnalyticsConfig(newConfig, user?.uid);
       setAnalyticsConfigSuccess('Analytics configuration saved successfully!');
       setTimeout(() => setAnalyticsConfigSuccess(''), 3000);
     } catch (err) {
@@ -197,7 +197,7 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
     applyTheme(nextTheme);
 
     try {
-      await saveThemePreference(nextTheme);
+      await saveThemePreference(nextTheme, user?.uid);
       setThemeSuccess(successMessage);
       setTimeout(() => setThemeSuccess(''), 3000);
     } catch (err) {
@@ -440,6 +440,29 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
                 )}
               </>
             ) : null}
+          </div>
+
+          {/* Privacy Policy Section */}
+          <div className="bg-primary border border-accent/30 rounded-lg p-4">
+            <div className="flex items-start gap-3 mb-4">
+              <ShieldCheck size={20} className="text-accent flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white mb-1">Privacy Policy</h3>
+                <p className="text-sm text-gray-400">
+                  Review how Lekalu handles account, expense, and app data.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <ExternalLink size={18} />
+              Open Privacy Policy
+            </a>
           </div>
 
           {/* Clear Data Section */}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import { OnboardingProvider, useOnboarding } from './contexts/OnboardingContext.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
@@ -8,6 +8,7 @@ import { Tour } from './components/Tour.jsx';
 import { PostLoginBiometricVerification } from './components/PostLoginBiometricVerification.jsx';
 import { isMobileDevice } from './utils/webauthn.js';
 import { applyTheme } from './utils/theme.js';
+import { usePersistentUserState } from './hooks/usePersistentUserState.js';
 import { ActivityPage } from './pages/ActivityPage.jsx';
 import { TrackablesPage } from './pages/TrackablesPage.jsx';
 import { TrackerPage } from './pages/TrackerPage.jsx';
@@ -41,10 +42,14 @@ const PrivateRoute = ({ children }) => {
 
 function AppContent() {
   const { user, isBiometricVerified, setIsBiometricVerified } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = usePersistentUserState('sidebar-open', user?.uid, false);
+  const [lastRoute, setLastRoute] = usePersistentUserState('last-route', user?.uid, '/');
   const { showTour, tourCompleted, startTour } = useOnboarding();
   const lastFocusTimeRef = useRef(Date.now()); // Track when app last had focus
   const wasHiddenRef = useRef(false); // Track if app was hidden
+  const hasHandledInitialRouteRef = useRef(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // On app load, clear biometric verification to ensure fresh session
   useEffect(() => {
@@ -67,12 +72,12 @@ function AppContent() {
   }, [user, setIsBiometricVerified]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user?.uid) return;
 
     let cancelled = false;
 
     const loadTheme = async () => {
-      const theme = await getThemePreference();
+      const theme = await getThemePreference(user.uid);
       if (!cancelled) {
         applyTheme(theme);
       }
@@ -83,7 +88,45 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+    if (location.pathname !== '/login' && location.pathname !== '/register') {
+      setLastRoute(currentPath || '/');
+    }
+  }, [user?.uid, location.pathname, location.search, location.hash, setLastRoute]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    if (hasHandledInitialRouteRef.current) {
+      return;
+    }
+
+    if (location.pathname === '/login' || location.pathname === '/register') {
+      return;
+    }
+
+    const currentPath = `${location.pathname}${location.search}${location.hash}`;
+    const routeToRestore = lastRoute || '/';
+
+    if (location.pathname === '/' && routeToRestore !== '/' && currentPath !== routeToRestore) {
+      hasHandledInitialRouteRef.current = true;
+      navigate(routeToRestore, { replace: true });
+      return;
+    }
+
+    if (location.pathname !== '/') {
+      hasHandledInitialRouteRef.current = true;
+    }
+  }, [user?.uid, location.pathname, location.search, location.hash, lastRoute, navigate]);
+
+  useEffect(() => {
+    hasHandledInitialRouteRef.current = false;
+  }, [user?.uid]);
 
   // Start tour automatically on first login
   useEffect(() => {

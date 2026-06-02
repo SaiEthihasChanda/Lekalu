@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { auth, db, getUserGroup as fetchUserGroup } from '../fb/index.js';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getThemePreference } from '../fb/index.js';
+import { applyTheme } from '../utils/theme.js';
 
 /**
  * @typedef {Object} AuthContextType
@@ -70,6 +72,15 @@ export const AuthProvider = ({ children }) => {
             photoURL: currentUser.photoURL,
             displayName: currentUser.displayName,
           }, { merge: true });
+
+          // Sync theme from Firestore to localStorage and apply it on login
+          try {
+            const themeFromFirestore = await getThemePreference(currentUser.uid);
+            applyTheme(themeFromFirestore);
+          } catch (error) {
+            console.error('Error syncing theme from Firestore:', error);
+            // Fallback to what's already in localStorage via initializeTheme
+          }
 
           // Listen to user document changes to detect group changes in real-time
           unsubscribeUserDocRef.current = onSnapshot(userDocRef, async (docSnapshot) => {

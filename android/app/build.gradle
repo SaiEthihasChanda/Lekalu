@@ -1,0 +1,90 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+plugins {
+    id 'com.android.application'
+}
+
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+configurations.configureEach {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+    }
+}
+
+android {
+    namespace 'com.lekalu.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.lekalu.app'
+        minSdk 24
+        targetSdk 35
+        versionCode 2
+        versionName '2.0.0'
+    }
+
+    signingConfigs {
+        release {
+            if (!keystorePropertiesFile.exists()) {
+                throw new RuntimeException('Missing android/keystore.properties. Create a release keystore before building the AAB.')
+            }
+
+            def storeFilePath = keystoreProperties.getProperty('storeFile')?.trim()
+            def storePasswordValue = keystoreProperties.getProperty('storePassword')?.trim()
+            def keyAliasValue = keystoreProperties.getProperty('keyAlias')?.trim()
+            def keyPasswordValue = keystoreProperties.getProperty('keyPassword')?.trim()
+
+            if (!storeFilePath || !storePasswordValue || !keyAliasValue || !keyPasswordValue) {
+                throw new RuntimeException('android/keystore.properties must define storeFile, storePassword, keyAlias, and keyPassword.')
+            }
+
+            storeFile rootProject.file(storeFilePath)
+            storePassword storePasswordValue
+            keyAlias keyAliasValue
+            keyPassword keyPasswordValue
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            debuggable true
+        }
+
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    packaging {
+        resources {
+            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1']
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

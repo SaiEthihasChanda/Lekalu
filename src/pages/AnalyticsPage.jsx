@@ -8,6 +8,7 @@ import { ActivityCard } from '../components/ActivityCard.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { format as formatDate } from 'date-fns';
 import * as XLSX from 'xlsx';
+import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
 import {
   BarChart,
   Bar,
@@ -101,35 +102,40 @@ const getDefaultConfigValue = (id, field) => {
 };
 
 export const AnalyticsPage = () => {
-  const [activeTab, setActiveTab] = useState('master'); // master | filtered
-  const [masterView, setMasterView] = useState('all'); // all | income | expenses
+  const { user, group } = useAuth();
+  const [activeTab, setActiveTab] = usePersistentUserState('analytics-active-tab', user?.uid, 'master'); // master | filtered
+  const [masterView, setMasterView] = usePersistentUserState('analytics-master-view', user?.uid, 'all'); // all | income | expenses
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState('');
-  const [timeRange, setTimeRange] = useState('month');
-  const [selectedAccountId, setSelectedAccountId] = useState('');
-  const [selectedTrackableId, setSelectedTrackableId] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [timeRange, setTimeRange] = usePersistentUserState('analytics-time-range', user?.uid, 'month');
+  const [selectedAccountId, setSelectedAccountId] = usePersistentUserState('analytics-selected-account', user?.uid, '');
+  const [selectedTrackableId, setSelectedTrackableId] = usePersistentUserState('analytics-selected-trackable', user?.uid, '');
+  const [selectedUserId, setSelectedUserId] = usePersistentUserState('analytics-selected-user', user?.uid, '');
+  const [startDate, setStartDate] = usePersistentUserState('analytics-start-date', user?.uid, '');
+  const [endDate, setEndDate] = usePersistentUserState('analytics-end-date', user?.uid, '');
   const [uniqueUsers, setUniqueUsers] = useState([]);
   const [analyticsConfig, setAnalyticsConfig] = useState(null);
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
   const { accounts } = useSources();
-  const { group } = useAuth();
 
   // Set up real-time listener for analytics configuration
   useEffect(() => {
+    if (!user?.uid) {
+      setAnalyticsConfig(null);
+      return undefined;
+    }
+
     const unsubscribe = listenToAnalyticsConfig((config) => {
       setAnalyticsConfig(config || {});
-    });
+    }, user.uid);
 
     return () => unsubscribe();
-  }, []);
+  }, [user?.uid]);
 
   // Get unique users in group from activities and fetch their emails
   useEffect(() => {

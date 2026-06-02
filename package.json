@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "android:sync": "node scripts/sync-android-assets.mjs",
+    "android:bundle": "npm run build && npm run android:sync && cd android && .\\gradlew.bat bundleRelease",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",

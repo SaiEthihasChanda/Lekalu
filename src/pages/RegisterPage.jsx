@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, LogIn } from 'lucide-react';
-import { registerUser, signInWithGoogle, canUseGoogleAuth } from '../fb/index.js';
+import { registerUser, signInWithGoogle, canUseGoogleAuth, getGoogleAuthUnavailableMessage } from '../fb/index.js';
 import { BiometricLoginButton } from '../components/BiometricAuth.jsx';
 import { PostLoginBiometricVerification } from '../components/PostLoginBiometricVerification.jsx';
 import { isMobileDevice } from '../utils/webauthn.js';
@@ -15,6 +15,7 @@ export const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [showBiometricVerification, setShowBiometricVerification] = useState(false);
   const googleAuthEnabled = canUseGoogleAuth();
+  const googleAuthUnavailableMessage = getGoogleAuthUnavailableMessage('sign-up');
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -64,7 +65,7 @@ export const RegisterPage = () => {
 
     try {
       if (!googleAuthEnabled) {
-        setError('Google sign-up is disabled on localhost. Use email/password, or add this domain in Firebase authorized domains.');
+        setError(googleAuthUnavailableMessage);
         return;
       }
 
@@ -202,7 +203,7 @@ export const RegisterPage = () => {
             </button>
           ) : (
             <div className="w-full rounded-lg border border-gray-700 bg-primary px-4 py-3 text-sm text-gray-400">
-              Google sign-up is disabled on localhost. Use email/password for local testing.
+              {googleAuthUnavailableMessage}
             </div>
           )}
 
@@ -219,9 +220,17 @@ export const RegisterPage = () => {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-gray-500 text-xs mt-8">
-          Your expense data is safely stored in the cloud
-        </p>
+        <div className="text-center text-gray-500 text-xs mt-8 space-y-2">
+          <p>Your expense data is safely stored in the cloud</p>
+          <a
+            href="/privacy.html"
+            target="_blank"
+            rel="noreferrer"
+            className="text-gray-400 hover:text-accent transition-colors"
+          >
+            Privacy Policy
+          </a>
+        </div>
       </div>
     </div>
   );

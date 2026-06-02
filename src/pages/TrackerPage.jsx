@@ -16,6 +16,8 @@ import {
   isWithinInterval,
 } from 'date-fns';
 import { useTrackables, useTrackers, useActivities } from '../hooks/index.js';
+import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
  * Get Sunday of current week (or previous Sunday if today is not Sunday)
@@ -156,8 +158,11 @@ const getPreviousDate = (date, granularity) => {
 };
 
 export const TrackerPage = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [granularity, setGranularity] = useState('month');
+  const { user } = useAuth();
+  const defaultCurrentDateIso = useMemo(() => new Date().toISOString(), []);
+  const [currentDateIso, setCurrentDateIso] = usePersistentUserState('tracker-current-date', user?.uid, defaultCurrentDateIso);
+  const currentDate = useMemo(() => new Date(currentDateIso), [currentDateIso]);
+  const [granularity, setGranularity] = usePersistentUserState('tracker-granularity', user?.uid, 'month');
   const [isCheckerOpen, setIsCheckerOpen] = useState(false);
   const { trackables } = useTrackables();
   const { trackers, addTracker, updateTracker } = useTrackers();
@@ -253,11 +258,11 @@ export const TrackerPage = () => {
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const previousPeriod = () => {
-    setCurrentDate(getPreviousDate(currentDate, granularity));
+    setCurrentDateIso(getPreviousDate(currentDate, granularity).toISOString());
   };
 
   const nextPeriod = () => {
-    setCurrentDate(getNextDate(currentDate, granularity));
+    setCurrentDateIso(getNextDate(currentDate, granularity).toISOString());
   };
 
   return (
@@ -276,7 +281,7 @@ export const TrackerPage = () => {
               value={granularity}
               onChange={(e) => {
                 setGranularity(e.target.value);
-                setCurrentDate(new Date());
+                setCurrentDateIso(new Date().toISOString());
               }}
               className="w-full sm:w-auto px-3 py-2 bg-primary border border-gray-600 rounded text-white focus:outline-none focus:border-accent"
             >
@@ -297,7 +302,7 @@ export const TrackerPage = () => {
                 : format(currentDate, 'yyyy-MM')
             }
             onChange={(e) => {
-              setCurrentDate(new Date(e.target.value));
+              setCurrentDateIso(new Date(e.target.value).toISOString());
             }}
             className="flex-1 sm:flex-none px-3 py-2 bg-primary border border-gray-600 rounded text-white focus:outline-none focus:border-accent"
           />

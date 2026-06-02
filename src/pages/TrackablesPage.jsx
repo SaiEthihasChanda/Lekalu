@@ -4,10 +4,13 @@ import { Modal } from '../components/Modal.jsx';
 import { SourceForm, SourceCard } from '../components/SourceForm.jsx';
 import { TrackableForm, TrackableCard } from '../components/TrackableForm.jsx';
 import { useSources, useTrackables, useActivities } from '../hooks/index.js';
+import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { calculateAccountBalance, formatAmount } from '../utils/analytics.js';
 
 export const TrackablesPage = () => {
-  const [activeTab, setActiveTab] = useState('trackables');
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = usePersistentUserState('trackables-active-tab', user?.uid, 'trackables');
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isTrackableModalOpen, setIsTrackableModalOpen] = useState(false);
   const [editingAccountId, setEditingAccountId] = useState(null);

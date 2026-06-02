@@ -6,6 +6,7 @@ import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
 import { EditActivityForm } from '../components/EditActivityForm.jsx';
 import { useActivities, useSources, useTrackables } from '../hooks/index.js';
+import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
 import { formatAmount } from '../utils/analytics.js';
 import { getUserEmail } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -18,9 +19,9 @@ export const ActivityPage = () => {
   const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingActivityId, setEditingActivityId] = useState(null);
-  const [dateFilter, setDateFilter] = useState('daily'); // daily, monthly, todate
   const [memberEmails, setMemberEmails] = useState({});
   const { user, loading: authLoading, group } = useAuth();
+  const [dateFilter, setDateFilter] = usePersistentUserState('activity-date-filter', user?.uid, 'daily'); // daily, monthly, todate
   const { accounts, loading: accountsLoading } = useSources();
   const { trackables, loading: tracksLoading } = useTrackables();
   
