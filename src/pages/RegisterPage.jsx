@@ -222,14 +222,24 @@ export const RegisterPage = () => {
         {/* Footer */}
         <div className="text-center text-gray-500 text-xs mt-8 space-y-2">
           <p>Your expense data is safely stored in the cloud</p>
-          <a
-            href="/privacy.html"
-            target="_blank"
-            rel="noreferrer"
-            className="text-gray-400 hover:text-accent transition-colors"
-          >
-            Privacy Policy
-          </a>
+          <div className="flex items-center justify-center gap-3">
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-400 hover:text-accent transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="/account-deletion.html"
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-400 hover:text-accent transition-colors"
+            >
+              Account Deletion
+            </a>
+          </div>
         </div>
       </div>
     </div>

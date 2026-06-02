@@ -463,6 +463,16 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
               <ExternalLink size={18} />
               Open Privacy Policy
             </a>
+
+            <a
+              href="/account-deletion.html"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <ExternalLink size={18} />
+              Account Deletion Request
+            </a>
           </div>
 
           {/* Clear Data Section */}
