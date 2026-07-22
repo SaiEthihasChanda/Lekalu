@@ -32,9 +32,10 @@ export const getDateRange = (filter) => {
         end: endOfYear(now).getTime(),
       };
     case 'custom':
+      // Snap to day boundaries so the selected start and end dates are both included.
       return {
-        start: filter.startDate || startOfYear(now).getTime(),
-        end: filter.endDate || endOfYear(now).getTime(),
+        start: filter.startDate ? startOfDay(new Date(filter.startDate)).getTime() : startOfYear(now).getTime(),
+        end: filter.endDate ? endOfDay(new Date(filter.endDate)).getTime() : endOfYear(now).getTime(),
       };
     default:
       return {
@@ -102,6 +103,26 @@ export const formatAmount = (amount) => {
     currency: 'INR',
     minimumFractionDigits: 2,
   }).format(amount);
+};
+
+const trimTrailingZeros = (value) => value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+
+/**
+ * Format an amount compactly using Indian units (K / L / Cr).
+ * Used where full currency strings would be too wide, e.g. pivot cells.
+ * @param {number} amount
+ * @returns {string} Compact amount, e.g. "₹1.25L"
+ */
+export const formatCompactAmount = (amount) => {
+  const value = Number(amount) || 0;
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  if (abs >= 10000000) return `${sign}₹${trimTrailingZeros((abs / 10000000).toFixed(2))}Cr`;
+  if (abs >= 100000) return `${sign}₹${trimTrailingZeros((abs / 100000).toFixed(2))}L`;
+  if (abs >= 1000) return `${sign}₹${trimTrailingZeros((abs / 1000).toFixed(1))}K`;
+
+  return `${sign}₹${abs.toFixed(0)}`;
 };
 
 export const formatDate = (timestamp, formatStr = 'MMM dd, yyyy') => {
@@ -175,6 +196,95 @@ export const calculateNetWorth = (accounts = [], activities = []) => {
   });
 
   return totalNetWorth;
+};
+
+const MONTH_KEY_FORMAT = 'yyyy-MM';
+const UNCATEGORIZED_ROW_ID = '__uncategorized__';
+
+/**
+ * Build a pivot of trackables (rows) against months (columns).
+ * Amounts are signed: income is positive, expense is negative, transfers are excluded.
+ * Columns span every month between the first and last matching activity, so gaps stay visible.
+ *
+ * @param {Array} activities - All activities
+ * @param {Map} trackablesMap - Map of trackableId -> trackable
+ * @param {'all' | 'income' | 'expenses'} view - Which activity types to include
+ * @returns {{ months: Array, rows: Array, columnTotals: Object, grandTotal: number }}
+ */
+export const buildTrackablePivot = (activities = [], trackablesMap = new Map(), view = 'all') => {
+  const relevant = activities.filter((activity) => {
+    if (!activity || isTransferType(activity.type)) return false;
+
+    // Reject null/0/Timestamp dates: a pending serverTimestamp() reads as null locally,
+    // and Number(null) would silently bucket the row into 1970.
+    if (!activity.date || !Number.isFinite(Number(activity.date))) return false;
+
+    const type = String(activity.type || '').toLowerCase();
+    if (view === 'income') return type === 'income';
+    if (view === 'expenses') return type === 'expense';
+
+    return type === 'income' || type === 'expense';
+  });
+
+  if (relevant.length === 0) {
+    return { months: [], rows: [], columnTotals: {}, grandTotal: 0 };
+  }
+
+  const { earliest, latest } = relevant.reduce((range, activity) => {
+    const date = Number(activity.date);
+    return {
+      earliest: Math.min(range.earliest, date),
+      latest: Math.max(range.latest, date),
+    };
+  }, { earliest: Infinity, latest: -Infinity });
+
+  const months = eachMonthOfInterval({
+    start: startOfMonth(new Date(earliest)),
+    end: startOfMonth(new Date(latest)),
+  }).map((date) => ({
+    key: format(date, MONTH_KEY_FORMAT),
+    label: format(date, 'MMM yy'),
+  }));
+
+  const rowsById = new Map();
+  const columnTotals = {};
+  let grandTotal = 0;
+
+  relevant.forEach((activity) => {
+    const trackable = activity.trackableId ? trackablesMap.get(activity.trackableId) : null;
+    const rowId = trackable?.id || activity.trackableId || UNCATEGORIZED_ROW_ID;
+    const monthKey = format(new Date(Number(activity.date)), MONTH_KEY_FORMAT);
+    const isIncome = String(activity.type || '').toLowerCase() === 'income';
+    const amount = Math.abs(Number(activity.amount) || 0) * (isIncome ? 1 : -1);
+
+    if (!rowsById.has(rowId)) {
+      rowsById.set(rowId, {
+        id: rowId,
+        name: trackable?.name || (rowId === UNCATEGORIZED_ROW_ID ? 'Uncategorized' : 'Unknown Trackable'),
+        trackableType: trackable?.type || null,
+        observedTypes: new Set(),
+        values: {},
+        total: 0,
+      });
+    }
+
+    const row = rowsById.get(rowId);
+    row.values[monthKey] = (row.values[monthKey] || 0) + amount;
+    row.total += amount;
+    row.observedTypes.add(isIncome ? 'income' : 'expense');
+
+    columnTotals[monthKey] = (columnTotals[monthKey] || 0) + amount;
+    grandTotal += amount;
+  });
+
+  const rows = Array.from(rowsById.values())
+    .map(({ observedTypes, trackableType, ...row }) => ({
+      ...row,
+      type: trackableType || (observedTypes.size === 1 ? Array.from(observedTypes)[0] : 'mixed'),
+    }))
+    .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+
+  return { months, rows, columnTotals, grandTotal };
 };
 
 /**

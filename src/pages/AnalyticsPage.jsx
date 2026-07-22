@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useActivities, useTrackables, useSources } from '../hooks/index.js';
-import { calculateAnalytics, formatAmount, calculateAccountBalance, generateDailyIncomeExpenseData, getDateRange } from '../utils/analytics.js';
-import { TrendingUp, Wallet, DollarSign, ListOrdered, Download } from 'lucide-react';
+import { calculateAnalytics, formatAmount, formatCompactAmount, calculateAccountBalance, generateDailyIncomeExpenseData, getDateRange, buildTrackablePivot } from '../utils/analytics.js';
+import { TrendingUp, Wallet, DollarSign, ListOrdered, Download, Table2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
 import { ActivityCard } from '../components/ActivityCard.jsx';
@@ -89,6 +89,7 @@ const getDefaultConfigValue = (id, field) => {
     masterTotal: { visible: true },
     masterBalances: { visible: true },
     masterTrackables: { visible: true },
+    masterPivot: { visible: true },
     filteredSummary: { visible: true },
     filteredTransactions: { visible: true },
     filteredCharts: { visible: true },
@@ -173,15 +174,16 @@ export const AnalyticsPage = () => {
   /** @type {AnalyticsFilter} */
   const filter = {
     timeRange,
-    startDate: startDate ? new Date(startDate).getTime() : undefined,
-    endDate: endDate ? new Date(endDate).getTime() : undefined,
+    // Parse as local midnight/end-of-day so both selected dates fall inside the range.
+    startDate: startDate ? new Date(`${startDate}T00:00:00`).getTime() : undefined,
+    endDate: endDate ? new Date(`${endDate}T23:59:59.999`).getTime() : undefined,
     accountId: selectedAccountId || undefined,
     trackableId: selectedTrackableId || undefined,
     userId: selectedUserId || undefined,
   };
 
-  const trackablesMap = new Map(trackables.map(t => [t.id, t]));
-  const accountsMap = new Map(accounts.map((a) => [a.id, a]));
+  const trackablesMap = useMemo(() => new Map(trackables.map(t => [t.id, t])), [trackables]);
+  const accountsMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
   const masterAccounts = useMemo(() => {
     return accounts.filter((account) => shouldIncludeAccountInMasterView(account, masterView));
@@ -226,6 +228,10 @@ export const AnalyticsPage = () => {
     });
 
     return Array.from(totals.values()).sort((a, b) => b.total - a.total);
+  }, [activities, trackablesMap, masterView]);
+
+  const trackablePivot = useMemo(() => {
+    return buildTrackablePivot(activities, trackablesMap, masterView);
   }, [activities, trackablesMap, masterView]);
 
   const exportableMasterTransactions = useMemo(() => {
@@ -635,6 +641,119 @@ export const AnalyticsPage = () => {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+          )}
+
+          {/* Master Pivot: Trackables x Months */}
+          {isLayoutSectionVisible('masterPivot') && (
+          <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mt-4 md:mt-8">
+            <div className="flex items-center gap-2 mb-1">
+              <Table2 size={20} className="text-accent" />
+              <h2 className="text-base md:text-lg font-semibold text-white truncate">Trackables by Month</h2>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">
+              Income is positive, expenses are negative. Scroll sideways for older months; hover any cell for the exact amount.
+            </p>
+
+            {trackablePivot.rows.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No trackable activity for this view</p>
+            ) : (
+              <div className="overflow-x-auto">
+                {/* border-separate keeps borders attached to the sticky first column */}
+                <table className="min-w-full border-separate border-spacing-0 text-xs md:text-sm">
+                  <thead>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-secondary border-b border-gray-700 px-2 py-2 text-left font-medium text-gray-400">
+                        Trackable
+                      </th>
+                      {trackablePivot.months.map((month) => (
+                        <th
+                          key={month.key}
+                          className="border-b border-gray-700 px-2 py-2 text-right font-medium text-gray-400 whitespace-nowrap"
+                        >
+                          {month.label}
+                        </th>
+                      ))}
+                      <th className="border-b border-gray-700 px-2 py-2 text-right font-semibold text-gray-300 whitespace-nowrap">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trackablePivot.rows.map((row) => (
+                      <tr key={row.id}>
+                        <th
+                          scope="row"
+                          title={row.name}
+                          className="sticky left-0 z-10 bg-secondary border-b border-gray-700 px-2 py-2 text-left font-normal text-white"
+                        >
+                          <span className="block max-w-[9rem] md:max-w-[14rem] truncate">{row.name}</span>
+                        </th>
+                        {trackablePivot.months.map((month) => {
+                          const value = row.values[month.key];
+
+                          return (
+                            <td
+                              key={month.key}
+                              title={value ? `${row.name} · ${month.label}: ${formatAmount(value)}` : `${row.name} · ${month.label}: no activity`}
+                              className={`border-b border-gray-700 px-2 py-2 text-right tabular-nums whitespace-nowrap ${
+                                !value ? 'text-gray-600' : value > 0 ? 'text-green-400' : 'text-red-400'
+                              }`}
+                            >
+                              {value ? formatCompactAmount(value) : '—'}
+                            </td>
+                          );
+                        })}
+                        <td
+                          title={formatAmount(row.total)}
+                          className={`border-b border-gray-700 px-2 py-2 text-right tabular-nums font-semibold whitespace-nowrap ${
+                            row.total >= 0 ? 'text-green-400' : 'text-red-400'
+                          }`}
+                        >
+                          {formatCompactAmount(row.total)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th className="sticky left-0 z-10 bg-secondary px-2 py-2 text-left font-semibold text-gray-300">
+                        Total
+                      </th>
+                      {trackablePivot.months.map((month) => {
+                        const value = trackablePivot.columnTotals[month.key];
+
+                        return (
+                          <td
+                            key={month.key}
+                            title={value ? formatAmount(value) : 'No activity'}
+                            className={`px-2 py-2 text-right tabular-nums font-semibold whitespace-nowrap ${
+                              !value ? 'text-gray-600' : value > 0 ? 'text-green-400' : 'text-red-400'
+                            }`}
+                          >
+                            {value ? formatCompactAmount(value) : '—'}
+                          </td>
+                        );
+                      })}
+                      <td
+                        title={formatAmount(trackablePivot.grandTotal)}
+                        className={`px-2 py-2 text-right tabular-nums font-bold whitespace-nowrap ${
+                          trackablePivot.grandTotal >= 0 ? 'text-green-400' : 'text-red-400'
+                        }`}
+                      >
+                        {formatCompactAmount(trackablePivot.grandTotal)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            {trackablePivot.rows.length > 0 && (
+              <p className="text-xs text-gray-500 mt-3">
+                {trackablePivot.rows.length} trackable{trackablePivot.rows.length !== 1 ? 's' : ''} across {trackablePivot.months.length} month{trackablePivot.months.length !== 1 ? 's' : ''}
+              </p>
             )}
           </div>
           )}

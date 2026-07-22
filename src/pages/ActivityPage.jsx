@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Users } from 'lucide-react';
-import { startOfDay, startOfMonth, startOfYear, endOfDay, endOfMonth, endOfYear } from 'date-fns';
+import { startOfDay, startOfMonth, startOfYear, endOfDay, endOfMonth, endOfYear, subMonths } from 'date-fns';
 import { Modal } from '../components/Modal.jsx';
 import { ActivityCard } from '../components/ActivityCard.jsx';
 import { AddActivityForm } from '../components/AddActivityForm.jsx';
@@ -13,6 +13,13 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 
 const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
 const isTransferType = (type) => typeof type === 'string' && TRANSFER_TYPES.has(type.trim().toLowerCase());
+
+const DATE_FILTERS = [
+  { id: 'daily', label: 'Daily', heading: 'Activity' },
+  { id: 'monthly', label: 'Monthly', heading: 'Monthly Activity' },
+  { id: 'lastmonth', label: 'Last Month', heading: 'Last Month Activity' },
+  { id: 'todate', label: 'Year-to-Date', heading: 'Year-to-Date Activity' },
+];
 
 export const ActivityPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -67,6 +74,10 @@ export const ActivityPage = () => {
         return { start: startOfDay(today).getTime(), end: endOfDay(today).getTime() };
       case 'monthly':
         return { start: startOfMonth(today).getTime(), end: endOfMonth(today).getTime() };
+      case 'lastmonth': {
+        const lastMonth = subMonths(today, 1);
+        return { start: startOfMonth(lastMonth).getTime(), end: endOfMonth(lastMonth).getTime() };
+      }
       case 'todate':
         return { start: startOfYear(today).getTime(), end: endOfDay(today).getTime() };
       default:
@@ -147,7 +158,7 @@ export const ActivityPage = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 mb-6 md:mb-8">
         <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            {dateFilter === 'daily' ? "Activity" : dateFilter === 'monthly' ? 'Monthly Activity' : 'Year-to-Date Activity'}
+            {DATE_FILTERS.find(f => f.id === dateFilter)?.heading || 'Activity'}
           </h1>
           <p className="text-sm md:text-base text-gray-400">Track your income and expenses</p>
         </div>
@@ -155,37 +166,20 @@ export const ActivityPage = () => {
 
       {/* Date Filter Buttons and Add Activity */}
       <div className="flex flex-col md:flex-row gap-4 md:gap-3 md:items-center md:justify-between mb-6 md:mb-8">
-        <div className="flex gap-2 md:gap-3">
-          <button
-            onClick={() => setDateFilter('daily')}
-            className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
-              dateFilter === 'daily'
-                ? 'bg-accent text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Daily
-          </button>
-          <button
-            onClick={() => setDateFilter('monthly')}
-            className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
-              dateFilter === 'monthly'
-                ? 'bg-accent text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setDateFilter('todate')}
-            className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors ${
-              dateFilter === 'todate'
-                ? 'bg-accent text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            Year-to-Date
-          </button>
+        <div className="flex flex-wrap gap-2 md:gap-3">
+          {DATE_FILTERS.map(filterOption => (
+            <button
+              key={filterOption.id}
+              onClick={() => setDateFilter(filterOption.id)}
+              className={`px-3 md:px-4 py-2 rounded-lg font-medium text-sm md:text-base transition-colors whitespace-nowrap ${
+                dateFilter === filterOption.id
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {filterOption.label}
+            </button>
+          ))}
         </div>
         <button
           id="tour-add-activity"
@@ -241,7 +235,7 @@ export const ActivityPage = () => {
       <div className="space-y-3">
         {sortedActivities.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">No activities for today</p>
+            <p className="text-gray-400">No activities for this period</p>
           </div>
         ) : (
           sortedActivities.map(activity => (
