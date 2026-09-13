@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateAccountBalance } from '../utils/analytics.js';
+import { calculateAccountBalance, resolveActivityAccountId } from '../utils/analytics.js';
 
 describe('Analytics', () => {
   describe('Activity Filtering', () => {
@@ -128,6 +128,39 @@ describe('Analytics', () => {
 
       expect(sourceBalance).toBe(600);
       expect(destinationBalance).toBe(500);
+    });
+  });
+
+  describe('Tracker-created activities (no accountId)', () => {
+    const trackablesMap = new Map([
+      ['track-cc', { id: 'track-cc', name: 'Card Bill', type: 'expense', accountId: 'credit-1' }],
+    ]);
+
+    it('should attribute an activity to its trackable account when accountId is missing', () => {
+      const activity = { id: 'a1', type: 'expense', amount: 500, trackableId: 'track-cc' };
+      expect(resolveActivityAccountId(activity, trackablesMap)).toBe('credit-1');
+    });
+
+    it('should prefer the explicit accountId over the trackable account', () => {
+      const activity = { id: 'a1', type: 'expense', amount: 500, trackableId: 'track-cc', accountId: 'debit-9' };
+      expect(resolveActivityAccountId(activity, trackablesMap)).toBe('debit-9');
+    });
+
+    it('should include tracker-created activities in the source balance and drop them on delete', () => {
+      const activities = [
+        { id: 'manual', type: 'expense', amount: 200, accountId: 'credit-1' },
+        { id: 'from-tracker', type: 'expense', amount: 500, trackableId: 'track-cc' },
+      ];
+
+      // Without the trackable map (old behaviour) the tracker activity is invisible
+      expect(calculateAccountBalance('credit-1', 0, activities)).toBe(-200);
+
+      // With the trackable map it counts toward the linked source
+      expect(calculateAccountBalance('credit-1', 0, activities, trackablesMap)).toBe(-700);
+
+      // Deleting it moves the balance back
+      const afterDelete = activities.filter(a => a.id !== 'from-tracker');
+      expect(calculateAccountBalance('credit-1', 0, afterDelete, trackablesMap)).toBe(-200);
     });
   });
 

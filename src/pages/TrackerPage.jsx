@@ -93,6 +93,40 @@ const getTrackerDisplayInstances = (tracker, trackable, granularityStart, granul
   return instances;
 };
 
+/**
+ * Normalize a Firestore Timestamp / Date / number to milliseconds.
+ * @param {any} value
+ * @returns {number|null}
+ */
+const toMillis = (value) => {
+  if (value == null) return null;
+  if (typeof value === 'number') return value;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  return null;
+};
+
+/**
+ * Find the activity that was created when a tracker was marked complete.
+ * Newer activities carry a trackerId; older ones are matched by trackable and creation time.
+ * @param {Array} activities
+ * @param {Object} tracker
+ * @returns {Object|undefined}
+ */
+const findTrackerActivity = (activities, tracker) => {
+  const linked = activities.find(a => a.trackerId === tracker.id);
+  if (linked) return linked;
+
+  const trackerCreatedAt = toMillis(tracker.createdAt);
+  if (trackerCreatedAt == null) return undefined;
+
+  return activities.find(a => {
+    if (a.trackableId !== tracker.trackableId) return false;
+    const activityCreatedAt = toMillis(a.createdAt);
+    return activityCreatedAt != null && Math.abs(activityCreatedAt - trackerCreatedAt) < 86400000; // Within 1 day
+  });
+};
+
 const GRANULARITIES = ['day', 'week', 'month', 'year'];
 
 const getDateRange = (date, granularity) => {
@@ -220,23 +254,25 @@ export const TrackerPage = () => {
     const newStatus = tracker.status === 'completed' ? 'pending' : 'completed';
 
     if (newStatus === 'completed') {
-      // Create activity when marking as completed
+      // Create activity when marking as completed.
+      // Carry the trackable's account so the activity counts toward that source's balance,
+      // and link back to the tracker so un-marking can find exactly this activity.
       const newActivity = {
         amount: trackable.trackerAmount || 0,
         type: trackable.type,
         trackableId: trackable.id,
+        trackerId: tracker.id,
         description: trackable.name,
         date: tracker.occurrenceDate,
       };
+      if (trackable.accountId) {
+        newActivity.accountId = trackable.accountId;
+      }
 
       await addActivity(newActivity);
     } else if (tracker.status === 'completed') {
       // Delete associated activity when unmarking
-      const associatedActivity = activities.find(
-        a => a.trackableId === tracker.trackableId && 
-             a.createdAt && 
-             Math.abs(a.createdAt - tracker.createdAt) < 86400000 // Within 1 day
-      );
+      const associatedActivity = findTrackerActivity(activities, tracker);
       if (associatedActivity) {
         await deleteActivity(associatedActivity.id);
       }

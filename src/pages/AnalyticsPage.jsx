@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useActivities, useTrackables, useSources } from '../hooks/index.js';
-import { calculateAnalytics, formatAmount, formatCompactAmount, calculateAccountBalance, generateDailyIncomeExpenseData, getDateRange, buildTrackablePivot } from '../utils/analytics.js';
-import { TrendingUp, Wallet, DollarSign, ListOrdered, Download, Table2 } from 'lucide-react';
+import { useActivities, useTrackables, useSources, fetchActivitiesFromServer, repairActivityAccounts } from '../hooks/index.js';
+import { calculateAnalytics, formatAmount, formatCompactAmount, calculateAccountBalance, resolveActivityAccountId, generateDailyIncomeExpenseData, getDateRange, buildTrackablePivot } from '../utils/analytics.js';
+import { TrendingUp, Wallet, DollarSign, ListOrdered, Download, Table2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { getUserEmail, listenToAnalyticsConfig } from '../fb/index.js';
 import { ActivityCard } from '../components/ActivityCard.jsx';
@@ -119,6 +119,8 @@ export const AnalyticsPage = () => {
   const [endDate, setEndDate] = usePersistentUserState('analytics-end-date', user?.uid, '');
   const [uniqueUsers, setUniqueUsers] = useState([]);
   const [analyticsConfig, setAnalyticsConfig] = useState(null);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [recalcResult, setRecalcResult] = useState(null); // { activityCount, repairedCount, at } | { error, at }
 
   const { activities } = useActivities();
   const { trackables } = useTrackables();
@@ -194,10 +196,29 @@ export const AnalyticsPage = () => {
       .map((account) => ({
         id: account.id,
         name: getAccountLabel(account),
-        balance: calculateAccountBalance(account.id, account.openingBalance || 0, activities),
+        balance: calculateAccountBalance(account.id, account.openingBalance || 0, activities, trackablesMap),
       }))
       .sort((a, b) => b.balance - a.balance);
-  }, [masterAccounts, activities]);
+  }, [masterAccounts, activities, trackablesMap]);
+
+  const handleRecalculateSources = async () => {
+    if (isRecalculating) return;
+    setIsRecalculating(true);
+    try {
+      // Pull every activity straight from the server (bypassing the local cache) and repair any
+      // that are missing an account link. The server fetch refreshes the live listener, so the
+      // balances below re-aggregate from the corrected data set.
+      const serverActivities = await fetchActivitiesFromServer(group);
+      const repairedCount = await repairActivityAccounts(serverActivities, trackablesMap);
+
+      setRecalcResult({ activityCount: serverActivities.length, repairedCount, at: Date.now() });
+    } catch (err) {
+      console.error('Error recalculating source balances:', err);
+      setRecalcResult({ error: err?.message || 'Recalculation failed', at: Date.now() });
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
 
   const masterTotal = useMemo(() => {
     return masterAccountBalances.reduce((sum, account) => sum + account.balance, 0);
@@ -247,7 +268,7 @@ export const AnalyticsPage = () => {
         if (start != null && activityDate < start) return false;
         if (end != null && activityDate > end) return false;
 
-        const accountId = getActivityAccountId(activity);
+        const accountId = getActivityAccountId(activity) || resolveActivityAccountId(activity, trackablesMap) || '';
         if (!accountId) return masterView === 'all';
 
         const account = accountsMap.get(accountId);
@@ -292,7 +313,7 @@ export const AnalyticsPage = () => {
 
     try {
       const toExportRow = (activity) => {
-        const accountId = getActivityAccountId(activity);
+        const accountId = getActivityAccountId(activity) || resolveActivityAccountId(activity, trackablesMap) || '';
         const account = accountsMap.get(accountId);
         const trackable = activity.trackableId ? trackablesMap.get(activity.trackableId) : null;
         const amount = Number(activity.amount) || 0;
@@ -384,11 +405,11 @@ export const AnalyticsPage = () => {
       .map((account) => ({
         id: account.id,
         name: getAccountLabel(account),
-        balance: calculateAccountBalance(account.id, account.openingBalance || 0, filteredTransactions),
+        balance: calculateAccountBalance(account.id, account.openingBalance || 0, filteredTransactions, trackablesMap),
       }))
       .filter((account) => !selectedAccountId || account.id === selectedAccountId)
       .sort((a, b) => b.balance - a.balance);
-  }, [accounts, filteredTransactions, selectedAccountId]);
+  }, [accounts, filteredTransactions, selectedAccountId, trackablesMap]);
 
   // Prepare daily/monthly income vs expense data for bar chart
   const dailyIncomeExpenseData = useMemo(() => {
@@ -596,6 +617,25 @@ export const AnalyticsPage = () => {
 
           {/* Master Bank Balances */}
           {isLayoutSectionVisible('masterBalances') && (
+          <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+            <p className="text-xs md:text-sm text-gray-400 min-w-0">
+              {recalcResult?.error
+                ? <span className="text-red-400">Recalculation failed: {recalcResult.error}</span>
+                : recalcResult
+                  ? `Recalculated from ${recalcResult.activityCount} activit${recalcResult.activityCount === 1 ? 'y' : 'ies'} at ${formatDate(recalcResult.at, 'HH:mm:ss')}${recalcResult.repairedCount ? ` \u00b7 repaired ${recalcResult.repairedCount} unlinked` : ''}`
+                  : 'Re-aggregate every source from its opening balance using data fetched directly from the server.'}
+            </p>
+            <button
+              type="button"
+              onClick={handleRecalculateSources}
+              disabled={isRecalculating}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-accent px-3 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-white disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <RefreshCw size={16} className={isRecalculating ? 'animate-spin' : ''} />
+              {isRecalculating ? 'Recalculating...' : 'Recalculate'}
+            </button>
+          </div>
           <div className="bg-secondary border border-gray-700 rounded-lg p-3 md:p-6 mb-4 md:mb-8">
             <div className="flex items-center gap-2 mb-4">
               <Wallet size={20} className="text-accent" />
@@ -616,6 +656,7 @@ export const AnalyticsPage = () => {
               </div>
             )}
           </div>
+          </>
           )}
 
           {/* Master Per Trackable Totals */}

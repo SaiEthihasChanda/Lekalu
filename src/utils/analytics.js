@@ -134,13 +134,38 @@ export const generateId = () => {
 };
 
 /**
+ * Resolve which account a non-transfer activity belongs to.
+ * Activities created by completing a tracker historically carried no accountId,
+ * so fall back to the linked trackable's account when one is available.
+ * @param {Object} activity - Activity record
+ * @param {Map} [trackablesMap] - Map of trackableId -> trackable
+ * @returns {string|undefined} Account ID
+ */
+export const resolveActivityAccountId = (activity, trackablesMap) => {
+  if (!activity) return undefined;
+
+  // Backward compatibility: older activity records may store account reference as sourceId.
+  const direct = activity.accountId || activity.sourceId;
+  if (direct) return direct;
+
+  if (activity.trackableId && trackablesMap?.get) {
+    const trackable = trackablesMap.get(activity.trackableId);
+    if (trackable?.accountId) return trackable.accountId;
+  }
+
+  return undefined;
+};
+
+/**
  * Calculate current balance for an account
  * @param {string} accountId - Account ID
  * @param {number} openingBalance - Opening balance
  * @param {Array} activities - Array of all activities
+ * @param {Map} [trackablesMap] - Map of trackableId -> trackable, used to attribute
+ *   activities that only reference a trackable (e.g. created from the tracker)
  * @returns {number} Current balance
  */
-export const calculateAccountBalance = (accountId, openingBalance = 0, activities = []) => {
+export const calculateAccountBalance = (accountId, openingBalance = 0, activities = [], trackablesMap = null) => {
   const accountActivities = activities.filter((activity) => {
     if (!activity) return false;
 
@@ -153,8 +178,7 @@ export const calculateAccountBalance = (accountId, openingBalance = 0, activitie
       );
     }
 
-    // Backward compatibility: older activity records may store account reference as sourceId.
-    return activity.accountId === accountId || activity.sourceId === accountId;
+    return resolveActivityAccountId(activity, trackablesMap) === accountId;
   });
   
   let balance = openingBalance;
@@ -183,13 +207,14 @@ export const calculateAccountBalance = (accountId, openingBalance = 0, activitie
  * Credit cards are treated as negative balances (debt)
  * @param {Array} accounts - Array of all accounts
  * @param {Array} activities - Array of all activities
+ * @param {Map} [trackablesMap] - Map of trackableId -> trackable
  * @returns {number} Total net worth
  */
-export const calculateNetWorth = (accounts = [], activities = []) => {
+export const calculateNetWorth = (accounts = [], activities = [], trackablesMap = null) => {
   let totalNetWorth = 0;
 
   accounts.forEach(account => {
-    const balance = calculateAccountBalance(account.id, account.openingBalance || 0, activities);
+    const balance = calculateAccountBalance(account.id, account.openingBalance || 0, activities, trackablesMap);
     
     // Simply add all balances - credit cards are already negative from calculateAccountBalance
     totalNetWorth += balance;

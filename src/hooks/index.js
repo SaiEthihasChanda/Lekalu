@@ -5,6 +5,8 @@ import {
   query,
   where,
   getDocs,
+  getDocsFromServer,
+  writeBatch,
   updateDoc,
   deleteDoc,
   doc,
@@ -682,6 +684,78 @@ export const useActivities = () => {
   }, []);
 
   return { activities, loading, error, addActivity, updateActivity, deleteActivity };
+};
+
+/**
+ * Normalize a decrypted activity document (shared by the live listener and manual fetch).
+ * @param {import('firebase/firestore').QueryDocumentSnapshot} docSnap
+ * @param {string} encryptionKey
+ * @returns {Object|null}
+ */
+const decodeActivityDoc = (docSnap, encryptionKey) => {
+  try {
+    const decrypted = decryptData({ id: docSnap.id, ...docSnap.data() }, encryptionKey);
+    if (decrypted.date && typeof decrypted.date === 'object' && decrypted.date.toMillis) {
+      decrypted.date = decrypted.date.toMillis();
+    }
+    return decrypted;
+  } catch (err) {
+    console.error(`Failed to decrypt activity ${docSnap.id}:`, err);
+    return null;
+  }
+};
+
+/**
+ * Fetch every activity visible to the current user straight from the Firestore server,
+ * bypassing the local cache and the live listener. Used for manual recalculation.
+ * @param {Object|null} group - Current group (from useAuth), or null for personal data
+ * @returns {Promise<Array>} Decrypted activities
+ */
+export const fetchActivitiesFromServer = async (group) => {
+  await initializeAuth();
+  const userId = getUserId();
+  const encryptionKey = generateEncryptionKey(userId, group?.id);
+
+  const activitiesQuery = group
+    ? query(collection(db, 'activities'), where('groupId', '==', group.id))
+    : query(collection(db, 'activities'), where('userId', '==', userId));
+
+  const snapshot = await getDocsFromServer(activitiesQuery);
+
+  return snapshot.docs
+    .filter((docSnap) => group || !docSnap.data().groupId)
+    .map((docSnap) => decodeActivityDoc(docSnap, encryptionKey))
+    .filter((activity) => activity !== null);
+};
+
+/**
+ * Backfill accountId on activities that only reference a trackable.
+ * Activities created from the tracker used to be saved without an account, so they
+ * never counted toward any source balance. Writes trackable.accountId onto them.
+ * @param {Array} activities - Decrypted activities
+ * @param {Map} trackablesMap - Map of trackableId -> trackable
+ * @returns {Promise<number>} Number of activities repaired
+ */
+export const repairActivityAccounts = async (activities, trackablesMap) => {
+  const toRepair = activities.filter((activity) => {
+    if (!activity || activity.accountId || activity.sourceId) return false;
+    if (activity.fromAccountId || activity.toAccountId) return false;
+    if (!activity.trackableId) return false;
+    return Boolean(trackablesMap.get(activity.trackableId)?.accountId);
+  });
+
+  // Firestore batches cap at 500 writes
+  for (let i = 0; i < toRepair.length; i += 450) {
+    const batch = writeBatch(db);
+    toRepair.slice(i, i + 450).forEach((activity) => {
+      const accountId = trackablesMap.get(activity.trackableId).accountId;
+      batch.update(doc(db, 'activities', activity.id), { accountId, updatedAt: serverTimestamp() });
+      activity.accountId = accountId;
+    });
+    await batch.commit();
+  }
+
+  return toRepair.length;
 };
 
 /**

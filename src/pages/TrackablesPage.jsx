@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { Modal } from '../components/Modal.jsx';
 import { SourceForm, SourceCard } from '../components/SourceForm.jsx';
@@ -18,6 +18,7 @@ export const TrackablesPage = () => {
 
   const { accounts, addAccount, updateAccount, deleteAccount } = useSources();
   const { trackables, addTrackable, updateTrackable, deleteTrackable } = useTrackables();
+  const trackablesMap = useMemo(() => new Map(trackables.map(t => [t.id, t])), [trackables]);
   const { activities } = useActivities();
 
   const editingAccount = editingAccountId ? accounts.find(a => a.id === editingAccountId) : undefined;
@@ -147,7 +148,7 @@ export const TrackablesPage = () => {
                 <SourceCard
                   key={account.id}
                   source={account}
-                  balance={formatAmount(calculateAccountBalance(account.id, account.openingBalance, activities))}
+                  balance={formatAmount(calculateAccountBalance(account.id, account.openingBalance, activities, trackablesMap))}
                   onEdit={() => handleEditAccount(account.id)}
                   onDelete={() => deleteAccount(account.id)}
                 />
