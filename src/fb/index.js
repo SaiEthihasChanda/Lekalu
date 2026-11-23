@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, where, getDocs, updateDoc, deleteDoc, doc, setDoc, serverTimestamp, getDoc, writeBatch, onSnapshot } from 'firebase/firestore';
-import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithCredential } from 'firebase/auth';
+import { hasNativeGoogleAuth, getNativeGoogleIdToken, clearNativeGoogleAuth } from './nativeGoogleAuth.js';
 import CryptoJS from 'crypto-js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
 import { DEFAULT_THEME, THEME_STORAGE_KEY, normalizeTheme } from '../utils/theme.js';
@@ -31,6 +32,7 @@ export const auth = getAuth(app);
  */
 export const canUseGoogleAuth = () => {
   if (typeof window === 'undefined') return true;
+  if (hasNativeGoogleAuth()) return true;
 
   const hostname = window.location.hostname;
   return !['localhost', '127.0.0.1', '0.0.0.0'].includes(hostname) && !isAndroidAppWebView();
@@ -60,7 +62,7 @@ export const getGoogleAuthUnavailableMessage = (action = 'sign-in') => {
   if (typeof window === 'undefined') return '';
 
   if (isAndroidAppWebView()) {
-    return `Google ${action} is not available in this APK build yet. Use email/password in the app, or use the web version for Google login.`;
+    return `Google ${action} is not available in this version of the app. Update the app, or use email/password.`;
   }
 
   return `Google ${action} is disabled on localhost. Use email/password, or add this domain in Firebase authorized domains.`;
@@ -169,6 +171,7 @@ export const loginUser = async (email, password) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
+    clearNativeGoogleAuth();
   } catch (error) {
     throw error;
   }
@@ -180,8 +183,10 @@ export const logoutUser = async () => {
  */
 export const signInWithGoogle = async () => {
   try {
-    const provider = new GoogleAuthProvider();
-    const userCredential = await signInWithPopup(auth, provider);
+    // Android app: native account picker -> ID token -> Firebase. Web: popup.
+    const userCredential = hasNativeGoogleAuth()
+      ? await signInWithCredential(auth, GoogleAuthProvider.credential(await getNativeGoogleIdToken()))
+      : await signInWithPopup(auth, new GoogleAuthProvider());
     const userId = userCredential.user.uid;
     
     // Store user email in Firestore for Google users
@@ -244,13 +249,26 @@ export const deleteAllUserData = async () => {
   }
 };
 
+// 32 symbols without look-alikes (0/O, 1/I); 256 % 32 === 0 so byte mapping stays unbiased.
+const GROUP_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const GROUP_CODE_LENGTH = 8;
+
 /**
- * Generate a unique 6-digit group code
- * @returns {string} 6-digit group code
+ * Generate a random group code (~10^12 combinations, unlike the legacy 6-digit codes,
+ * which still work for groups that already have them).
+ * @returns {string} 8-character group code
  */
 const generateGroupCode = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const bytes = crypto.getRandomValues(new Uint8Array(GROUP_CODE_LENGTH));
+  return Array.from(bytes, (byte) => GROUP_CODE_ALPHABET[byte % GROUP_CODE_ALPHABET.length]).join('');
 };
+
+/**
+ * Normalize user-entered group codes so lowercase or padded input still matches.
+ * @param {string} code
+ * @returns {string}
+ */
+const normalizeGroupCode = (code) => String(code || '').trim().toUpperCase();
 
 /**
  * Create a new expense group
@@ -315,7 +333,7 @@ export const joinGroup = async (groupCode) => {
     }
 
     // Find group by code
-    const q = query(collection(db, 'groups'), where('code', '==', groupCode));
+    const q = query(collection(db, 'groups'), where('code', '==', normalizeGroupCode(groupCode)));
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) {

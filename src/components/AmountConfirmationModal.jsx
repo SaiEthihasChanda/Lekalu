@@ -29,7 +29,7 @@ export const AmountConfirmationModal = ({ isOpen, amount, onConfirm, onCancel })
               Are you sure this is the correct amount?🤨
             </h2>
             <p className="text-sm md:text-base text-gray-300">
-              To make sure the amount you entered is <span className="font-semibold text-accent">{amountWords}{decimals !== '00' ? ' and ' + decimals + ' paise' : ''}</span>
+              To make sure the amount you entered is <span className="font-semibold text-accent">{amountWords}{decimals !== 0 ? ' and ' + decimals + ' paise' : ''}</span>
             </p>
           </div>
         </div>

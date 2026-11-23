@@ -10,9 +10,14 @@ import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
 import { formatAmount } from '../utils/analytics.js';
 import { getUserEmail } from '../fb/index.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import { useSms } from '../sms/SmsContext.jsx';
+import {
+  ALL, DEFAULT_ACTIVITY_FILTERS, NO_TRACKABLE, filterActivities, isTransferType, sanitizeActivityFilters,
+} from '../utils/activityFilters.js';
 
-const TRANSFER_TYPES = new Set(['transfer', 'self transfer', 'self-transfer', 'self_transfer']);
-const isTransferType = (type) => typeof type === 'string' && TRANSFER_TYPES.has(type.trim().toLowerCase());
+const SMS_DUPLICATE_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+
+const filterSelectClass = 'bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-accent min-w-0';
 
 const DATE_FILTERS = [
   { id: 'daily', label: 'Daily', heading: 'Activity' },
@@ -31,6 +36,14 @@ export const ActivityPage = () => {
   const [dateFilter, setDateFilter] = usePersistentUserState('activity-date-filter', user?.uid, 'daily'); // daily, monthly, todate
   const { accounts, loading: accountsLoading } = useSources();
   const { trackables, loading: tracksLoading } = useTrackables();
+  const [storedFilters, setStoredFilters] = usePersistentUserState('activity-filters', user?.uid, DEFAULT_ACTIVITY_FILTERS);
+  // A filter on a deleted source/trackable falls back to "all" (only once both lists have loaded)
+  const filters = useMemo(() => (accountsLoading || tracksLoading
+    ? { ...DEFAULT_ACTIVITY_FILTERS, ...(storedFilters || {}) }
+    : sanitizeActivityFilters(storedFilters, accounts, trackables)), [storedFilters, accounts, trackables, accountsLoading, tracksLoading]);
+  const filtersActive = filters.sourceId !== ALL || filters.type !== ALL || filters.trackableId !== ALL;
+  const setFilter = (key, value) => setStoredFilters({ ...filters, [key]: value });
+  const trackablesMap = useMemo(() => new Map(trackables.map(t => [t.id, t])), [trackables]);
   
   // Use server timestamps for consistent date handling across devices
   const { activities, addActivity, updateActivity, deleteActivity } = useActivities();
@@ -85,11 +98,12 @@ export const ActivityPage = () => {
     }
   }, [dateFilter]);
 
-  // Sort and filter activities by date range
+  // Sort and filter activities by date range, then by source / type / trackable (totals follow both)
   const sortedActivities = useMemo(() => {
-    const filtered = [...activities]
+    const inRange = [...activities]
       .filter(a => a && a.date != null && typeof a.date === 'number')
-      .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end)
+      .filter(a => a.date >= getDateRange.start && a.date <= getDateRange.end);
+    const filtered = filterActivities(inRange, filters, trackablesMap)
       .sort((a, b) => (b.date || 0) - (a.date || 0));
     
     console.log(`[ActivityPage] dateFilter=${dateFilter}, range=[${new Date(getDateRange.start).toLocaleString()} - ${new Date(getDateRange.end).toLocaleString()}]`);
@@ -99,7 +113,7 @@ export const ActivityPage = () => {
     }
     
     return filtered;
-  }, [activities, getDateRange, dateFilter]);
+  }, [activities, getDateRange, dateFilter, filters, trackablesMap]);
 
   const todayStats = useMemo(() => {
     const filteredActivities = sortedActivities.filter(a => !isTransferType(a.type));
@@ -117,7 +131,20 @@ export const ActivityPage = () => {
     };
   }, [sortedActivities]);
 
+  const { detections: smsDetections } = useSms();
+
   const handleAddActivity = async (data) => {
+    // Warn before a manual entry duplicates a transaction already recorded or waiting from SMS
+    const now = Date.now();
+    const sameAmount = (value) => Math.abs(Number(value) - Number(data.amount)) < 0.005;
+    const fromSms = activities.find((activity) => activity.smsFingerprint && activity.type === data.type
+      && sameAmount(activity.amount) && Math.abs((activity.date || 0) - now) <= SMS_DUPLICATE_WINDOW_MS);
+    const smsType = (detection) => (detection.payload?.direction === 'credit' ? 'income' : 'expense');
+    const waiting = smsDetections.find((detection) => detection.status === 'pending' && smsType(detection) === data.type
+      && sameAmount(detection.payload?.amount) && Math.abs(detection.smsTime - now) <= SMS_DUPLICATE_WINDOW_MS);
+    if (fromSms && !confirm(`An activity of ${formatAmount(data.amount)} was already recorded from an SMS ("${fromSms.description || fromSms.type}"). Add this one too?`)) return;
+    if (!fromSms && waiting && !confirm(`An SMS for ${formatAmount(data.amount)} is waiting in "Detected". Accept it there instead to avoid a duplicate. Add manually anyway?`)) return;
+
     await addActivity({
       ...data,
       date: Date.now(),
@@ -149,7 +176,6 @@ export const ActivityPage = () => {
     setEditingActivityId(null);
   };
 
-  const trackablesMap = new Map(trackables.map(t => [t.id, t]));
   const accountsMap = new Map(accounts.map(a => [a.id, a]));
 
   return (
@@ -189,6 +215,30 @@ export const ActivityPage = () => {
           <Plus size={18} className="md:w-5 md:h-5" />
           Add Activity
         </button>
+      </div>
+
+      {/* Source / type / trackable filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-6 md:mb-8">
+        <select aria-label="Filter by source" className={filterSelectClass} value={filters.sourceId} onChange={(e) => setFilter('sourceId', e.target.value)}>
+          <option value={ALL}>All sources</option>
+          {accounts.map(account => <option key={account.id} value={account.id}>{account.cardName}</option>)}
+        </select>
+        <select aria-label="Filter by type" className={filterSelectClass} value={filters.type} onChange={(e) => setFilter('type', e.target.value)}>
+          <option value={ALL}>All types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+          <option value="transfer">Transfer</option>
+        </select>
+        <select aria-label="Filter by trackable" className={filterSelectClass} value={filters.trackableId} onChange={(e) => setFilter('trackableId', e.target.value)}>
+          <option value={ALL}>All trackables</option>
+          <option value={NO_TRACKABLE}>No trackable</option>
+          {trackables.map(trackable => <option key={trackable.id} value={trackable.id}>{trackable.name}</option>)}
+        </select>
+        {filtersActive && (
+          <button type="button" onClick={() => setStoredFilters(DEFAULT_ACTIVITY_FILTERS)} className="text-sm text-accent hover:underline px-2">
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Group Info Card */}
@@ -235,7 +285,7 @@ export const ActivityPage = () => {
       <div className="space-y-3">
         {sortedActivities.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">No activities for this period</p>
+            <p className="text-gray-400">{filtersActive ? 'No activities match these filters for this period' : 'No activities for this period'}</p>
           </div>
         ) : (
           sortedActivities.map(activity => (

@@ -2,6 +2,7 @@ package com.lekalu.app;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.WebChromeClient;
@@ -25,6 +26,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String WEB_ASSET_PREFIX = "public/";
 
     private WebView webView;
+    private SmsSupport smsSupport;
+    private GoogleAuthSupport googleAuthSupport;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -33,6 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
         webView = findViewById(R.id.web_view);
         configureWebView();
+        smsSupport = new SmsSupport(this, webView, APP_ASSET_HOST);
+        googleAuthSupport = new GoogleAuthSupport(this, webView, APP_ASSET_HOST);
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -48,10 +53,29 @@ public class MainActivity extends AppCompatActivity {
         });
 
         if (savedInstanceState == null) {
-            webView.loadUrl("https://" + APP_ASSET_HOST + "/");
+            webView.loadUrl("https://" + APP_ASSET_HOST + smsSupport.initialRoute(getIntent()));
         } else {
             webView.restoreState(savedInstanceState);
         }
+    }
+
+    @Override
+    protected void onNewIntent(@NonNull Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        smsSupport.onNewIntent(intent);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        smsSupport.onResume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        smsSupport.onDestroy();
+        super.onDestroy();
     }
 
     @Override
@@ -85,6 +109,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return handleNavigation(Uri.parse(url));
+            }
+
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                if (smsSupport != null) {
+                    smsSupport.onPageStarted(url);
+                }
+                if (googleAuthSupport != null) {
+                    googleAuthSupport.onPageStarted(url);
+                }
             }
 
             @Override

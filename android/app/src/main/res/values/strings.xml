@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Lekalu</string>
+    <!-- Web OAuth client of the Firebase project; the ID token audience for native Google sign-in. -->
+    <string name="google_web_client_id" translatable="false">938111176827-of26m1lt3cp68lthf0uleu172gnrj9p5.apps.googleusercontent.com</string>
 </resources>

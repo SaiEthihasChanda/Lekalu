@@ -49,18 +49,14 @@ const getWeekEnd = (date) => {
  * @param {Function} onClose - Close modal callback
  * @param {Array} trackers - All tracker items
  * @param {Array} trackables - All trackables
- * @param {Function} onUpdateStatus - Callback to update tracker status
- * @param {Function} onCreateActivity - Callback to create activity for completed tracker
- * @param {Function} onDeleteActivity - Callback to delete activity
+ * @param {Function} onSetStatus - (trackerId, status) => Promise; also creates/removes the linked activity
  */
 export const CheckerModal = ({
   isOpen,
   onClose,
   trackers,
   trackables,
-  onUpdateStatus,
-  onCreateActivity,
-  onDeleteActivity,
+  onSetStatus,
 }) => {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectionStart, setSelectionStart] = useState(null);
@@ -198,10 +194,7 @@ export const CheckerModal = ({
     }
   };
 
-  const updateTrackerStatus = async (trackerId, newStatus) => {
-    // Call the update callback for individual tracker
-    await onUpdateStatus(trackerId, { status: newStatus });
-  };
+  const updateTrackerStatus = (trackerId, newStatus) => onSetStatus(trackerId, newStatus);
 
   const previousMonth = () => {
     setCalendarDate(addMonths(calendarDate, -1));

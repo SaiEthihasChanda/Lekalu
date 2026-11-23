@@ -1,5 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { format } from 'date-fns';
 import { AmountConfirmationModal } from './AmountConfirmationModal.jsx';
+
+/** Value for <input type="datetime-local"> in the device's time zone. */
+const toDateTimeInput = (ms) => (Number.isFinite(ms) ? format(new Date(ms), "yyyy-MM-dd'T'HH:mm") : '');
 
 const normalizeActivityType = (value) => {
   if (typeof value !== 'string') return 'expense';
@@ -18,6 +22,8 @@ export const EditActivityForm = ({ activity, trackables, accounts, onSubmit, isL
   const [fromAccountId, setFromAccountId] = useState(activity?.fromAccountId || accounts[0]?.id || '');
   const [toAccountId, setToAccountId] = useState(activity?.toAccountId || accounts[1]?.id || '');
   const [description, setDescription] = useState(activity?.description || '');
+  const initialDateInput = toDateTimeInput(activity?.date);
+  const [dateInput, setDateInput] = useState(initialDateInput);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingData, setPendingData] = useState(null);
 
@@ -47,6 +53,16 @@ export const EditActivityForm = ({ activity, trackables, accounts, onSubmit, isL
       type,
       description,
     };
+
+    // Only write the date when it was changed, so untouched records keep their original timestamp
+    if (dateInput !== initialDateInput) {
+      const newDate = new Date(dateInput).getTime();
+      if (!Number.isFinite(newDate)) {
+        alert('Please enter a valid date and time');
+        return;
+      }
+      data.date = newDate;
+    }
 
     // Add accountId/transfer fields based on type
     if (type === 'transfer') {
@@ -194,6 +210,19 @@ export const EditActivityForm = ({ activity, trackables, accounts, onSubmit, isL
           </select>
         </div>
       )}
+
+      <div>
+        <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Date &amp; time</label>
+        <input
+          type="datetime-local"
+          value={dateInput}
+          onChange={(e) => setDateInput(e.target.value)}
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 md:px-4 py-2 text-white focus:outline-none focus:border-accent text-sm md:text-base"
+        />
+        {activity?.trackerId && dateInput !== initialDateInput && (
+          <p className="text-xs text-gray-400 mt-1">This entry stays linked to its tracker occurrence.</p>
+        )}
+      </div>
 
       <div>
         <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Description</label>

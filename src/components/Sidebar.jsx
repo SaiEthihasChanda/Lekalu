@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, CheckSquare, Settings, Activity, LogOut, HelpCircle, Sliders, User } from 'lucide-react';
+import { BarChart3, CheckSquare, Settings, Activity, LogOut, HelpCircle, Sliders, User, MessageSquare, Info } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useOnboarding } from '../contexts/OnboardingContext.jsx';
 import { logoutUser } from '../fb/index.js';
 import { SettingsModal } from './SettingsModal.jsx';
+import { useSms } from '../sms/SmsContext.jsx';
 
 export const Sidebar = ({ isOpen, onClose, onToggle, withTopBar }) => {
   const location = useLocation();
@@ -12,12 +13,16 @@ export const Sidebar = ({ isOpen, onClose, onToggle, withTopBar }) => {
   const { user } = useAuth();
   const { startTour } = useOnboarding();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { supported: smsSupported, pendingCount } = useSms();
 
   const navItems = [
     { path: '/', label: 'Activity', icon: Activity },
     { path: '/trackables', label: 'Trackables', icon: Settings },
     { path: '/tracker', label: 'Tracker', icon: CheckSquare },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+    // SMS detection exists only in the sideload Android build
+    ...(smsSupported ? [{ path: '/inbox', label: 'Detected', icon: MessageSquare, badge: pendingCount }] : []),
+    { path: '/about', label: 'About', icon: Info },
   ];
 
   const handleLogout = async () => {
@@ -82,6 +87,9 @@ export const Sidebar = ({ isOpen, onClose, onToggle, withTopBar }) => {
                   >
                     <Icon size={20} />
                     <span>{item.label}</span>
+                    {item.badge > 0 && (
+                      <span className="ml-auto min-w-[1.5rem] rounded-full bg-red-500 px-1.5 text-center text-xs font-semibold text-white">{item.badge}</span>
+                    )}
                   </Link>
                 </li>
               );

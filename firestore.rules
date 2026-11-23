@@ -49,56 +49,77 @@ service cloud.firestore {
     match /bankAccounts/{sourceId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
-      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Trackables - personal or group
     match /trackables/{trackableId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
-      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Activities - personal or group
     match /activities/{activityId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
-      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
     }
 
     // Trackers - personal or group
     match /trackers/{trackerId} {
       allow read: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
-      allow create: if isSignedIn() && resource.data.userId == request.auth.uid;
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
       allow delete: if isSignedIn() && 
         (resource.data.userId == request.auth.uid ||
-         (resource.data.get('groupId') != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+         (resource.data.get('groupId', null) != null && isGroupMember(request.auth.uid, resource.data.groupId)));
+    }
+
+    // SMS detections (Android sideload build) - always personal, owned by one user.
+    // Document IDs are "<uid>_<fingerprint>"; reads of a not-yet-existing doc are allowed so
+    // the app can check-then-create inside a transaction.
+    match /smsDetections/{detectionId} {
+      allow read: if isSignedIn() &&
+        (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid &&
+        detectionId.matches(request.auth.uid + '_.*');
+      allow update: if isSignedIn() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.fingerprint == resource.data.fingerprint;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Learned SMS account-digit -> source mappings, one document per user
+    match /smsSettings/{userId} {
+      allow read, write: if isSignedIn() && isUser(userId);
     }
   }
 }

@@ -69,6 +69,46 @@ export const generateTrackerOccurrences = ({ startDate, frequency, frequencyInte
   return occurrences;
 };
 
+const HALF_DAY_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Plan the tracker occurrences needed so tracked trackables keep reaching a year ahead.
+ * Only returns occurrences after a trackable's latest existing one; trackables with no
+ * occurrences yet, untracked ones, and items outside the given scope are skipped.
+ * @param {Array} trackables - Decrypted trackables
+ * @param {Array} trackers - Existing trackers
+ * @param {string|null} groupId - Current group ID, or null for personal data
+ * @returns {{ trackableId: string, occurrenceDate: number }[]}
+ */
+export const getMissingTrackerOccurrences = (trackables, trackers, groupId = null) => {
+  const inScope = (item) => (item.groupId || null) === groupId;
+
+  const latestByTrackable = new Map();
+  trackers.forEach((tracker) => {
+    if (!inScope(tracker) || typeof tracker.occurrenceDate !== 'number') return;
+    const latest = latestByTrackable.get(tracker.trackableId) ?? -Infinity;
+    latestByTrackable.set(tracker.trackableId, Math.max(latest, tracker.occurrenceDate));
+  });
+
+  const missing = [];
+  trackables.forEach((trackable) => {
+    if (!inScope(trackable) || !trackable.includeInTracker || !trackable.frequency || !trackable.startDate) return;
+
+    const latest = latestByTrackable.get(trackable.id);
+    if (latest == null) return;
+
+    generateTrackerOccurrences({
+      startDate: trackable.startDate,
+      frequency: trackable.frequency,
+      frequencyInterval: trackable.frequencyInterval || 1,
+    })
+      .filter((occurrenceDate) => occurrenceDate > latest + HALF_DAY_MS)
+      .forEach((occurrenceDate) => missing.push({ trackableId: trackable.id, occurrenceDate }));
+  });
+
+  return missing;
+};
+
 /**
  * Get tracker occurrences within a specific date range
  * 

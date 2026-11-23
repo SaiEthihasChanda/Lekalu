@@ -42,6 +42,12 @@ export const encryptData = (data, encryptionKey) => {
       'trackerAmount',
       'isDone',
       'completedAt',
+      // SMS detection: parsed SMS fields, learned account-digit and name-to-trackable mappings,
+      // and links of recorded SMS kept across a re-detect
+      'payload',
+      'accountMap',
+      'merchantMap',
+      'keptLinks',
     ];
 
     // Create encrypted copy

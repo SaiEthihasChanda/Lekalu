@@ -7,7 +7,7 @@ import { GroupManagementModal } from './GroupManagementModal.jsx';
 import { BiometricSettings } from './BiometricAuth.jsx';
 import { AnalyticsDisplaySettings } from './AnalyticsDisplaySettings.jsx';
 import { isMobileDevice, registerBiometric } from '../utils/webauthn.js';
-import { DEFAULT_THEME, applyTheme, normalizeTheme, resolveThemePalette } from '../utils/theme.js';
+import { DEFAULT_THEME, THEME_STORAGE_KEY, applyTheme, normalizeTheme, resolveThemePalette } from '../utils/theme.js';
 
 /**
  * Settings Modal Component
@@ -73,8 +73,10 @@ export const SettingsModal = ({ isOpen, onClose, onDataCleared }) => {
 
     try {
       await deleteAllUserData();
-      // Clear local storage
-      localStorage.clear();
+      // Keep biometric credentials and the theme; they are device settings, not user data.
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('lekalu_') && key !== THEME_STORAGE_KEY)
+        .forEach((key) => localStorage.removeItem(key));
       // Callback to parent to refresh or navigate
       if (onDataCleared) {
         onDataCleared();

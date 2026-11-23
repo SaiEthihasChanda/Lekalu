@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, initializeAuth, getUserId } from '../fb/index.js';
 import { generateEncryptionKey, encryptData, decryptData } from '../utils/encryption.js';
-import { generateTrackerOccurrences } from '../utils/trackerOccurrences.js';
+import { generateTrackerOccurrences, getMissingTrackerOccurrences } from '../utils/trackerOccurrences.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 /**
@@ -626,14 +626,20 @@ export const useActivities = () => {
     };
   }, [group]);
 
-  const addActivity = useCallback(async (data) => {
+  /**
+   * @param {Object} data - Activity fields
+   * @param {Object} [options]
+   * @param {number} [options.date] - Explicit activity date (ms), e.g. a tracker's occurrence date.
+   *   Without it the server timestamp is used.
+   */
+  const addActivity = useCallback(async (data, { date } = {}) => {
     try {
       const userId = getUserId();
       // Use group ID for encryption key so all group members can decrypt each other's data
       const encryptionKey = generateEncryptionKey(userId, group?.id);
-      
-      // Ensure date is set to server timestamp (not client date)
-      // If date is provided, remove it - always use server timestamp for consistency across devices
+
+      // A client date inside `data` is ignored; only an explicit `options.date` overrides
+      // the server timestamp, so ordinary entries stay consistent across devices.
       const dataWithoutDate = { ...data };
       delete dataWithoutDate.date;
       
@@ -641,7 +647,7 @@ export const useActivities = () => {
       
       const docRef = await addDoc(collection(db, 'activities'), {
         ...encryptedData,
-        date: serverTimestamp(), // Always use server timestamp for activity date
+        date: date ?? serverTimestamp(),
         userId,
         groupId: group?.id || null,
         groupMemberId: group ? userId : null,
@@ -756,6 +762,43 @@ export const repairActivityAccounts = async (activities, trackablesMap) => {
   }
 
   return toRepair.length;
+};
+
+/**
+ * Write the tracker occurrences needed so tracked trackables keep reaching a year ahead
+ * (see getMissingTrackerOccurrences). Existing trackers are never touched. Document IDs are
+ * deterministic, so a concurrent run (another device, React StrictMode) writes the same
+ * documents instead of duplicates.
+ * @param {Array} trackables - Decrypted trackables for the current scope
+ * @param {Array} trackers - Trackers for the current scope
+ * @param {Object|null} group - Current group (from useAuth), or null for personal data
+ * @returns {Promise<number>} Number of occurrences created
+ */
+export const extendTrackerOccurrences = async (trackables, trackers, group) => {
+  const groupId = group?.id || null;
+  const missing = getMissingTrackerOccurrences(trackables, trackers, groupId);
+  if (missing.length === 0) return 0;
+
+  const userId = getUserId();
+  // Firestore batches cap at 500 writes
+  for (let i = 0; i < missing.length; i += 450) {
+    const batch = writeBatch(db);
+    missing.slice(i, i + 450).forEach(({ trackableId, occurrenceDate }) => {
+      batch.set(doc(db, 'trackers', `${trackableId}_${occurrenceDate}`), {
+        trackableId,
+        occurrenceDate,
+        status: 'pending',
+        userId,
+        groupId,
+        groupMemberId: groupId ? userId : null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await batch.commit();
+  }
+
+  return missing.length;
 };
 
 /**

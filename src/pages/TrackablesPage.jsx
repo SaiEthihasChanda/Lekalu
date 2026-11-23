@@ -54,6 +54,32 @@ export const TrackablesPage = () => {
     setIsTrackableModalOpen(true);
   };
 
+  const handleDeleteTrackable = async (id) => {
+    const name = trackablesMap.get(id)?.name || 'this trackable';
+    const linkedCount = activities.filter((a) => a.trackableId === id).length;
+    const message = linkedCount > 0
+      ? `Delete "${name}"? This also deletes ${linkedCount} linked activit${linkedCount === 1 ? 'y' : 'ies'} and its tracker entries, which changes source balances. This cannot be undone.`
+      : `Delete "${name}"? Its tracker entries are deleted too. This cannot be undone.`;
+
+    if (confirm(message)) {
+      await deleteTrackable(id);
+    }
+  };
+
+  const handleDeleteAccount = async (id) => {
+    const name = accounts.find((a) => a.id === id)?.cardName || 'this source';
+    const linkedCount = activities.filter((a) =>
+      [a.accountId, a.sourceId, a.fromAccountId, a.toAccountId, a.fromSourceId, a.toSourceId].includes(id)
+    ).length;
+    const message = linkedCount > 0
+      ? `Delete "${name}"? ${linkedCount} activit${linkedCount === 1 ? 'y uses' : 'ies use'} this source. They are kept, but will no longer count toward any source balance. This cannot be undone.`
+      : `Delete "${name}"? This cannot be undone.`;
+
+    if (confirm(message)) {
+      await deleteAccount(id);
+    }
+  };
+
   const handleCloseAccountModal = () => {
     setIsAccountModalOpen(false);
     setEditingAccountId(null);
@@ -119,7 +145,7 @@ export const TrackablesPage = () => {
                   key={trackable.id}
                   trackable={trackable}
                   onEdit={() => handleEditTrackable(trackable.id)}
-                  onDelete={() => deleteTrackable(trackable.id)}
+                  onDelete={() => handleDeleteTrackable(trackable.id)}
                 />
               ))
             )}
@@ -150,7 +176,7 @@ export const TrackablesPage = () => {
                   source={account}
                   balance={formatAmount(calculateAccountBalance(account.id, account.openingBalance, activities, trackablesMap))}
                   onEdit={() => handleEditAccount(account.id)}
-                  onDelete={() => deleteAccount(account.id)}
+                  onDelete={() => handleDeleteAccount(account.id)}
                 />
               ))
             )}

@@ -45,7 +45,7 @@ A modern React + Vite expense tracking application designed with a trading app-l
 
 ## Technology Stack
 
-- **React 18** - UI framework
+- **React 19** - UI framework
 - **JavaScript** - With JSDoc for type documentation
 - **Tailwind CSS** - Styling
 - **Vite** - Build tool and dev server
@@ -86,13 +86,13 @@ npm install
 npm run dev
 ```
 
-The app will start at `http://localhost:5176`
+The app will start at `http://localhost:5173`
 
 ### Setup
 
 1. **Firebase Setup** - Follow [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
 2. **GitHub & Deployment** - Follow [GITHUB_FIREBASE_SETUP.md](GITHUB_FIREBASE_SETUP.md)
-3. **Local Testing** - Create account and test at http://localhost:5176
+3. **Local Testing** - Create account and test at http://localhost:5173
 
 ### Building
 

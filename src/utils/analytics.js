@@ -202,27 +202,6 @@ export const calculateAccountBalance = (accountId, openingBalance = 0, activitie
   return balance;
 };
 
-/**
- * Calculate total net worth across all accounts
- * Credit cards are treated as negative balances (debt)
- * @param {Array} accounts - Array of all accounts
- * @param {Array} activities - Array of all activities
- * @param {Map} [trackablesMap] - Map of trackableId -> trackable
- * @returns {number} Total net worth
- */
-export const calculateNetWorth = (accounts = [], activities = [], trackablesMap = null) => {
-  let totalNetWorth = 0;
-
-  accounts.forEach(account => {
-    const balance = calculateAccountBalance(account.id, account.openingBalance || 0, activities, trackablesMap);
-    
-    // Simply add all balances - credit cards are already negative from calculateAccountBalance
-    totalNetWorth += balance;
-  });
-
-  return totalNetWorth;
-};
-
 const MONTH_KEY_FORMAT = 'yyyy-MM';
 const UNCATEGORIZED_ROW_ID = '__uncategorized__';
 

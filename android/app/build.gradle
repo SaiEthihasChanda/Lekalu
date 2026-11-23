@@ -54,6 +54,20 @@ android {
         }
     }
 
+    // play: Google Play build, no SMS access.
+    // full: sideload build with SMS transaction detection, installed as a separate app.
+    flavorDimensions = ['distribution']
+    productFlavors {
+        play {
+            dimension 'distribution'
+        }
+        full {
+            dimension 'distribution'
+            applicationIdSuffix '.full'
+            versionNameSuffix '-full'
+        }
+    }
+
     buildTypes {
         debug {
             applicationIdSuffix '.debug'
@@ -87,4 +101,7 @@ android {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.credentials:credentials:1.3.0'
+    implementation 'androidx.credentials:credentials-play-services-auth:1.3.0'
+    implementation 'com.google.android.libraries.identity.googleid:googleid:1.1.1'
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sms_channel_name">Detected transactions</string>
+    <string name="sms_channel_description">A bank or UPI SMS was detected and is waiting for review</string>
+    <string name="sms_notification_title">Transaction detected</string>
+    <string name="sms_notification_text">SMS from %1$s. Tap to review in Lekalu.</string>
+    <string name="sms_notification_text_many">%1$d SMS transactions waiting. Tap to review in Lekalu.</string>
+</resources>

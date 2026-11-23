@@ -16,6 +16,9 @@ import { AnalyticsPage } from './pages/AnalyticsPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { RegisterPage } from './pages/RegisterPage.jsx';
 import { getThemePreference } from './fb/index.js';
+import { SmsProvider } from './sms/SmsContext.jsx';
+import { SmsInboxPage } from './pages/SmsInboxPage.jsx';
+import { AboutPage } from './pages/AboutPage.jsx';
 
 /**
  * Private route component that checks authentication
@@ -50,6 +53,15 @@ function AppContent() {
   const hasHandledInitialRouteRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // The Android app asks to open a route (e.g. a "transaction detected" notification opens /inbox)
+  useEffect(() => {
+    const handleNavigate = (event) => {
+      if (typeof event.detail === 'string' && event.detail.startsWith('/')) navigate(event.detail);
+    };
+    window.addEventListener('lekalu-navigate', handleNavigate);
+    return () => window.removeEventListener('lekalu-navigate', handleNavigate);
+  }, [navigate]);
 
   // On app load, clear biometric verification to ensure fresh session
   useEffect(() => {
@@ -240,6 +252,8 @@ function AppContent() {
               <Route path="/trackables" element={<TrackablesPage />} />
               <Route path="/tracker" element={<TrackerPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/inbox" element={<SmsInboxPage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -263,7 +277,9 @@ function App() {
     <Router>
       <AuthProvider>
         <OnboardingProvider>
-          <AppContent />
+          <SmsProvider>
+            <AppContent />
+          </SmsProvider>
         </OnboardingProvider>
       </AuthProvider>
     </Router>

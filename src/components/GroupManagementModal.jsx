@@ -464,9 +464,11 @@ export const GroupManagementModal = ({ isOpen, onClose, onGroupUpdated }) => {
                 <input
                   type="text"
                   value={groupCode}
-                  onChange={(e) => setGroupCode(e.target.value.slice(0, 6))}
-                  placeholder="Enter 6-digit code"
-                  maxLength="6"
+                  onChange={(e) => setGroupCode(e.target.value.toUpperCase().slice(0, 8))}
+                  placeholder="Enter group code"
+                  maxLength="8"
+                  autoCapitalize="characters"
+                  autoComplete="off"
                   className="w-full bg-primary border border-gray-600 rounded-lg px-4 py-2 text-white text-sm font-mono text-center focus:outline-none focus:border-accent"
                 />
                 <div className="flex gap-2">

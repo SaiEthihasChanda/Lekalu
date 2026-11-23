@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import {
   startOfDay,
@@ -15,7 +15,7 @@ import {
   isSameDay,
   isWithinInterval,
 } from 'date-fns';
-import { useTrackables, useTrackers, useActivities } from '../hooks/index.js';
+import { useTrackables, useTrackers, useActivities, extendTrackerOccurrences } from '../hooks/index.js';
 import { usePersistentUserState } from '../hooks/usePersistentUserState.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -192,15 +192,27 @@ const getPreviousDate = (date, granularity) => {
 };
 
 export const TrackerPage = () => {
-  const { user } = useAuth();
+  const { user, group } = useAuth();
   const defaultCurrentDateIso = useMemo(() => new Date().toISOString(), []);
   const [currentDateIso, setCurrentDateIso] = usePersistentUserState('tracker-current-date', user?.uid, defaultCurrentDateIso);
   const currentDate = useMemo(() => new Date(currentDateIso), [currentDateIso]);
   const [granularity, setGranularity] = usePersistentUserState('tracker-granularity', user?.uid, 'month');
   const [isCheckerOpen, setIsCheckerOpen] = useState(false);
-  const { trackables } = useTrackables();
-  const { trackers, addTracker, updateTracker } = useTrackers();
+  const { trackables, loading: trackablesLoading } = useTrackables();
+  const { trackers, loading: trackersLoading, updateTracker } = useTrackers();
   const { activities, addActivity, deleteActivity } = useActivities();
+  const extendedScopeRef = useRef(null);
+
+  // Once per scope (personal or group), top up tracker occurrences so they keep reaching a year ahead.
+  useEffect(() => {
+    const scope = group?.id || 'personal';
+    if (trackablesLoading || trackersLoading || extendedScopeRef.current === scope) return;
+    extendedScopeRef.current = scope;
+
+    extendTrackerOccurrences(trackables, trackers, group).catch((err) => {
+      console.error('Error extending tracker occurrences:', err);
+    });
+  }, [trackablesLoading, trackersLoading, trackables, trackers, group]);
 
   // Debug: log all trackers with their dates
   useMemo(() => {
@@ -244,17 +256,19 @@ export const TrackerPage = () => {
   // Skip creator email fetching for now to avoid infinite loops
   // Email display can be added back later with proper async handling
 
-  const handleMarkComplete = async (trackerId) => {
+  /**
+   * Single entry point for tracker status changes (Tracker list and Checker), so completing
+   * always creates the linked activity and leaving 'completed' always removes it.
+   */
+  const setTrackerStatus = async (trackerId, newStatus) => {
     const tracker = trackers.find(t => t.id === trackerId);
-    if (!tracker) return;
+    if (!tracker || tracker.status === newStatus) return;
 
     const trackable = trackables.find(t => t.id === tracker.trackableId);
-    if (!trackable) return;
-
-    const newStatus = tracker.status === 'completed' ? 'pending' : 'completed';
 
     if (newStatus === 'completed') {
-      // Create activity when marking as completed.
+      if (!trackable) return;
+
       // Carry the trackable's account so the activity counts toward that source's balance,
       // and link back to the tracker so un-marking can find exactly this activity.
       const newActivity = {
@@ -263,15 +277,14 @@ export const TrackerPage = () => {
         trackableId: trackable.id,
         trackerId: tracker.id,
         description: trackable.name,
-        date: tracker.occurrenceDate,
       };
       if (trackable.accountId) {
         newActivity.accountId = trackable.accountId;
       }
 
-      await addActivity(newActivity);
+      // Date the activity on the occurrence it settles, not on the day it was ticked.
+      await addActivity(newActivity, { date: tracker.occurrenceDate });
     } else if (tracker.status === 'completed') {
-      // Delete associated activity when unmarking
       const associatedActivity = findTrackerActivity(activities, tracker);
       if (associatedActivity) {
         await deleteActivity(associatedActivity.id);
@@ -281,12 +294,14 @@ export const TrackerPage = () => {
     await updateTracker(trackerId, { status: newStatus });
   };
 
-  const handleSkipTracker = async (trackerId) => {
+  const handleMarkComplete = (trackerId) => {
     const tracker = trackers.find(t => t.id === trackerId);
-    if (!tracker) return;
+    return setTrackerStatus(trackerId, tracker?.status === 'completed' ? 'pending' : 'completed');
+  };
 
-    const newStatus = tracker.status === 'skipped' ? 'pending' : 'skipped';
-    await updateTracker(trackerId, { status: newStatus });
+  const handleSkipTracker = (trackerId) => {
+    const tracker = trackers.find(t => t.id === trackerId);
+    return setTrackerStatus(trackerId, tracker?.status === 'skipped' ? 'pending' : 'skipped');
   };
 
   const completedCount = trackersInRange.filter(t => t.status === 'completed').length;
@@ -483,9 +498,7 @@ export const TrackerPage = () => {
         onClose={() => setIsCheckerOpen(false)}
         trackers={trackers}
         trackables={trackables}
-        onUpdateStatus={updateTracker}
-        onCreateActivity={addActivity}
-        onDeleteActivity={deleteActivity}
+        onSetStatus={setTrackerStatus}
       />
     </div>
   );
