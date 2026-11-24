@@ -214,7 +214,7 @@ final class SmsSupport {
                 }
                 while (cursor.moveToNext() && result.length() < MAX_SCAN_ROWS) {
                     String body = cursor.getString(1);
-                    if (!SmsStore.looksTransactional(body)) {
+                    if (!SmsStore.looksTransactional(cursor.getString(0), body)) {
                         continue;
                     }
                     long received = cursor.getLong(2);

@@ -69,7 +69,7 @@ public class SmsReceiver extends BroadcastReceiver {
         int queued = 0;
         for (Map.Entry<String, StringBuilder> entry : bodies.entrySet()) {
             String body = entry.getValue().toString();
-            if (!SmsStore.looksTransactional(body)) {
+            if (!SmsStore.looksTransactional(entry.getKey(), body)) {
                 continue;
             }
             Long timestamp = timestamps.get(entry.getKey());

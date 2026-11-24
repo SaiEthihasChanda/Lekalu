@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -16,6 +17,11 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.web_view);
+        keepClearOfSystemBars((View) webView.getParent());
         configureWebView();
         smsSupport = new SmsSupport(this, webView, APP_ASSET_HOST);
         googleAuthSupport = new GoogleAuthSupport(this, webView, APP_ASSET_HOST);
@@ -84,6 +91,27 @@ public class MainActivity extends AppCompatActivity {
         if (webView != null) {
             webView.saveState(outState);
         }
+    }
+
+    /**
+     * Android 15+ draws apps edge to edge, under the status bar, camera cutout and navigation bar.
+     * Pad the WebView's container by those areas (and the keyboard) so no page content or
+     * fixed button ends up hidden or untappable behind them.
+     */
+    private void keepClearOfSystemBars(View root) {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), root);
+        // The app background is dark, so keep status and navigation icons light
+        bars.setAppearanceLightStatusBars(false);
+        bars.setAppearanceLightNavigationBars(false);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout()
+                    | WindowInsetsCompat.Type.ime());
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+            return WindowInsetsCompat.CONSUMED;
+        });
     }
 
     private void configureWebView() {

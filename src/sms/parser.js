@@ -126,8 +126,18 @@ export const normalizeSender = (sender) => {
   return value;
 };
 
-/** True for a 10+ digit phone number sender (person-to-person SMS, not a bank). */
-const isPhoneNumberSender = (sender) => /^\+?[0-9]{10,}$/.test(String(sender || '').replace(/[\s-]/g, ''));
+/**
+ * Only service (-S) and transactional (-T) sender IDs carry bank alerts.
+ * Promotional (-P), government (-G), unsuffixed headers and phone numbers are ignored.
+ * @param {string} sender e.g. "AD-HDFCBK-S"
+ * @returns {boolean}
+ */
+export const isAlertSender = (sender) => {
+  const parts = String(sender || '').trim().toUpperCase().split('-').filter(Boolean);
+  return parts.length >= 2
+    && /^[ST]$/.test(parts[parts.length - 1])
+    && /^[A-Z0-9]{3,}$/.test(parts[parts.length - 2]);
+};
 
 const findFirstPattern = (patterns, text) => {
   let best = null;
@@ -237,6 +247,7 @@ export const parseSms = ({ sender, body }) => {
   CURRENCY_AMOUNT.lastIndex = 0;
 
   if (!text) return { kind: 'ignore', reason: 'empty' };
+  if (!isAlertSender(sender)) return { kind: 'ignore', reason: 'sender-category' };
 
   const debitIndex = findFirstPattern(DEBIT_PATTERNS, text);
   const creditIndex = findFirstPattern(CREDIT_PATTERNS, text);
@@ -251,10 +262,6 @@ export const parseSms = ({ sender, body }) => {
 
   if (!amountInfo && !hasVerb) return { kind: 'ignore', reason: 'not-financial' };
   if (!hasVerb) return { kind: 'ignore', reason: 'balance-or-info' };
-  // A person texting "I paid 500" is not a bank alert
-  if (isPhoneNumberSender(sender) && !/\b(?:a\/?c|acct|account|card|upi|bank)\b/i.test(text)) {
-    return { kind: 'ignore', reason: 'personal-message' };
-  }
   if (!amountInfo) return { kind: 'unparsed', reason: 'no-amount' };
 
   const isRefund = REFUND_PATTERN.test(text);

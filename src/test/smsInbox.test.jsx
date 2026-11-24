@@ -171,6 +171,22 @@ describe('SmsInboxPage', () => {
     });
   });
 
+  it('shows the original SMS from the phone in a popup', async () => {
+    const { scanSms } = await import('../sms/bridge.js');
+    const { fingerprintSms } = await import('../sms/ingest.js');
+    const original = { sender: 'AD-HDFCBK-S', body: 'Rs 499 debited from A/c XX1234 to netflix', timestamp: T0 };
+    const other = { sender: 'VM-HDFCBK-S', body: 'Rs 20 debited from A/c XX1234 to tea stall', timestamp: T0 + 1000 };
+    scanSms.mockReturnValueOnce([other, original]);
+    setSms({ detections: [{ ...detection, fingerprint: fingerprintSms(original).fingerprint, payload: { ...detection.payload, sender: 'HDFCBK' } }] });
+    store.fetchScopeData.mockResolvedValue(scope());
+    render(<SmsInboxPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /View SMS/ }));
+    expect(screen.getByText('SMS from HDFCBK')).toBeInTheDocument();
+    expect(screen.getByText(original.body)).toBeInTheDocument();
+    expect(screen.queryByText(other.body)).not.toBeInTheDocument();
+  });
+
   it('clears and re-detects from the chosen date after confirmation', async () => {
     setSms();
     store.fetchScopeData.mockResolvedValue(scope());

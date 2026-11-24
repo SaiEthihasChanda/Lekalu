@@ -77,7 +77,7 @@ describe('resolveTrackableForName', () => {
 
 describe('applyKeptLinks (re-detect)', () => {
   const sms = (amount, ref, timestamp) => ({
-    sender: 'VM-HDFCBK',
+    sender: 'VM-HDFCBK-S',
     body: `Rs.${amount} debited from A/c XX1234 on 12-05-25 to VPA shop@ybl UPI Ref ${ref}`,
     timestamp,
   });

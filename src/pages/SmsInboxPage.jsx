@@ -8,6 +8,8 @@ import {
   requestSmsPermission, scanSms,
 } from '../sms/bridge.js';
 import { normalizeSender } from '../sms/parser.js';
+import { fingerprintSms } from '../sms/ingest.js';
+import { Modal } from '../components/Modal.jsx';
 import {
   activityTypeFor, normalizeMerchantName, resolveSourceId, resolveTrackableForName, suggestAction,
 } from '../sms/matching.js';
@@ -344,7 +346,9 @@ const DetectionCard = ({ detection, context, onDone }) => {
     // The inbox is queried by receive time, which can trail the SMS timestamp by a few minutes
     const matches = scanSms(detection.smsTime - 60 * 1000, detection.smsTime + 15 * 60 * 1000)
       .filter((sms) => normalizeSender(sms.sender) === payload.sender && Math.abs(sms.timestamp - detection.smsTime) <= 60 * 1000);
-    setSmsText(matches[0]?.body || 'The original SMS is not on this phone any more.');
+    // Prefer the exact message this detection was made from; fall back to the closest one from that sender
+    const exact = matches.find((sms) => fingerprintSms(sms).fingerprint === detection.fingerprint);
+    setSmsText((exact || matches[0])?.body || 'The original SMS is not on this phone any more.');
   };
 
   const handleRecordManual = () => {
@@ -495,9 +499,6 @@ const DetectionCard = ({ detection, context, onDone }) => {
 
       {detection.status === 'unparsed' && (
         <div className="space-y-2">
-          {smsText ? <p className="text-sm text-gray-300 whitespace-pre-wrap bg-gray-800 rounded p-2">{smsText}</p> : (
-            <button type="button" className="text-xs text-accent underline" onClick={handleViewSms}>Show the SMS</button>
-          )}
           <div className="grid gap-2 sm:grid-cols-3">
             <input className={inputClass} type="number" step="0.01" placeholder="Amount" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} />
             <select className={inputClass} value={manualType} onChange={(e) => setManualType(e.target.value)}>
@@ -536,6 +537,16 @@ const DetectionCard = ({ detection, context, onDone }) => {
           </button>
         </div>
       )}
+
+      <div className="flex justify-end">
+        <button type="button" className="flex items-center gap-1 text-xs text-accent hover:underline" onClick={handleViewSms}>
+          <MessageSquare size={14} /> View SMS
+        </button>
+      </div>
+      <Modal isOpen={smsText != null} onClose={() => setSmsText(null)} title={`SMS from ${payload.sender || 'unknown sender'}`} size="sm">
+        <p className="text-xs text-gray-500 mb-2">{formatTime(detection.smsTime)}</p>
+        <p className="text-sm text-gray-200 whitespace-pre-wrap break-words">{smsText}</p>
+      </Modal>
 
       {error && <p className="text-sm text-red-400">{error}</p>}
     </div>

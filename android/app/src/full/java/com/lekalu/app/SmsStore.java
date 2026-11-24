@@ -34,6 +34,8 @@ final class SmsStore {
     private static final Pattern MONEY = Pattern.compile(
             "(?i)(\\brs\\.?|\\binr|₹|debit|credit|spent|paid|withdrawn|received|sent|deposited|refund|revers)");
     private static final Pattern HAS_DIGIT = Pattern.compile("[0-9]");
+    /** Service (-S) and transactional (-T) headers only; mirrors isAlertSender in src/sms/parser.js. */
+    private static final Pattern ALERT_SENDER = Pattern.compile("^(?:.*-)?[A-Z0-9]{3,}-[ST]$");
 
     interface Listener {
         void onQueued();
@@ -49,9 +51,13 @@ final class SmsStore {
         listener = value;
     }
 
-    /** Cheap filter so chats and OTP-only texts are not stored; the app does the real parsing. */
-    static boolean looksTransactional(@Nullable String body) {
-        return body != null && HAS_DIGIT.matcher(body).find() && MONEY.matcher(body).find();
+    /**
+     * Cheap filter so chats, promotions and OTP-only texts are not stored; the app does the real parsing.
+     * Only -S/-T sender headers pass; -P, -G, unsuffixed headers and phone numbers are dropped.
+     */
+    static boolean looksTransactional(@Nullable String sender, @Nullable String body) {
+        return sender != null && ALERT_SENDER.matcher(sender.trim().toUpperCase(java.util.Locale.ROOT)).matches()
+                && body != null && HAS_DIGIT.matcher(body).find() && MONEY.matcher(body).find();
     }
 
     private static SharedPreferences prefs(Context context) {

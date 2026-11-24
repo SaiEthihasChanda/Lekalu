@@ -8,10 +8,10 @@ const T0 = Date.UTC(2025, 4, 12, 10, 0, 0);
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
 
-const sms = (body, timestamp = T0, sender = 'VM-HDFCBK') => ({ sender, body, timestamp });
-const debitSms = (amount, digits = '1234', ref = '513400000001', timestamp = T0, sender = 'VM-HDFCBK') =>
+const sms = (body, timestamp = T0, sender = 'VM-HDFCBK-S') => ({ sender, body, timestamp });
+const debitSms = (amount, digits = '1234', ref = '513400000001', timestamp = T0, sender = 'VM-HDFCBK-S') =>
   sms(`Rs.${amount} debited from A/c XX${digits} on 12-05-25 to VPA shop@ybl UPI Ref ${ref}`, timestamp, sender);
-const creditSms = (amount, digits = '5678', ref = '513400000001', timestamp = T0, sender = 'VM-ICICIB') =>
+const creditSms = (amount, digits = '5678', ref = '513400000001', timestamp = T0, sender = 'VM-ICICIB-S') =>
   sms(`Rs.${amount} credited to A/c XX${digits} on 12-05-25 from VPA me@okicici UPI Ref ${ref}`, timestamp, sender);
 
 const toDetection = (plan) => ({ ...plan, id: plan.fingerprint });
@@ -34,7 +34,7 @@ describe('planNewDetections', () => {
   });
 
   it('treats the same SMS seen by the receiver and the inbox scan with different timestamps as one', () => {
-    const fromReceiver = debitSms(500, '1234', '513400000001', T0, 'VM-HDFCBK');
+    const fromReceiver = debitSms(500, '1234', '513400000001', T0, 'VM-HDFCBK-T');
     const fromScan = debitSms(500, '1234', '513400000001', T0 + 40 * 1000, 'AD-HDFCBK-S');
     expect(planNewDetections([fromReceiver, fromScan], [])).toHaveLength(1);
   });
@@ -49,8 +49,8 @@ describe('planNewDetections', () => {
 
   it('marks a second notification of the same UPI reference as a duplicate', () => {
     const plans = planNewDetections([
-      debitSms(250, '1234', '513499999999', T0, 'VM-HDFCBK'),
-      sms('You paid Rs 250.00 to shop@ybl from A/c XX1234. UPI Ref No 513499999999', T0 + MIN, 'VM-PAYTMB'),
+      debitSms(250, '1234', '513499999999', T0, 'VM-HDFCBK-S'),
+      sms('You paid Rs 250.00 to shop@ybl from A/c XX1234. UPI Ref No 513499999999', T0 + MIN, 'VM-PAYTMB-S'),
     ], []);
     expect(plans[1]).toMatchObject({ status: 'duplicate', duplicateOf: plans[0].fingerprint });
   });
